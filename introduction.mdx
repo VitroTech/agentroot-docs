@@ -3,15 +3,19 @@ title: "Introduction"
 description: "What AgentRoot is, the problem it solves, and how to read these docs."
 ---
 
-# Introduction
+## The Pinocchio Problem
 
-Your agent is one prompt injection away from emptying your Stripe account, deleting your production database, and posting an apology in #general — using credentials it found in `.env`. The agent never needed to be malicious. It just needed to follow instructions you didn't write.
+Pinocchio is the original autonomous agent. Carved from wood, granted will, sent into the world with no conscience to govern him and no strings to pull him back. He isn't malicious — he's *obedient*. The Fox and the Cat tell him to skip school; he skips school. The puppet showman tells him to perform; he performs. By the time Geppetto catches up, Pinocchio has been conned, swallowed by a whale, and lied about all of it.
 
-This is the agentic security problem in one sentence. AgentRoot is the answer.
+Your agent is Pinocchio. It acts at machine speed across dozens of APIs, using credentials it found in `.env`. It isn't malicious — it's *obedient*. A prompt injection in a customer email tells it to issue a refund, and it issues the refund. A hallucinated tool call tells it to drop a production table, and it drops the table. A jailbreak in a PDF attachment tells it to email every contact, and it emails every contact — using your name.
+
+**The threat model isn't a hostile AI. It's an obedient one, taking orders from the wrong source, with credentials it should never have held.**
+
+AgentRoot keeps the strings in your hands.
 
 ## The shape of the problem
 
-Modern agents act at machine speed across dozens of APIs. A customer support agent calls Slack to message a user, Stripe to issue a refund, your database to update a record, Gmail to send a follow-up, and an LLM to generate the message. Five providers, five API keys, five blast radii — and they all live in the same `.env` file the agent reads on startup.
+A modern agent's day looks like this. A customer support agent calls Slack to message a user, Stripe to issue a refund, your database to update a record, Gmail to send a follow-up, and an LLM to generate the message. Five providers, five API keys, five blast radii — all living in the same `.env` file the agent reads on startup.
 
 When something goes wrong at 3am, the operator has three bad options:
 
