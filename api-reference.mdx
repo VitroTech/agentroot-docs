@@ -1,38 +1,53 @@
 ---
 title: "API Reference"
-description: "HTTP endpoints for the AgentRoot proxy and dashboard API."
+description: "Raw HTTP reference for the AgentRoot proxy — for clients that don't use the SDK."
 ---
 
-# API Reference
+This page covers the raw HTTP endpoints exposed by the AgentRoot proxy and dashboard API. For most use cases the [SDK](sdk) is the path of least resistance — but if you're calling from a language without an AgentRoot SDK, from a low-level service, or from a CI workflow, this is the reference.
 
-This reference covers the raw HTTP endpoints for developers who prefer to call the proxy directly without the SDK.
+The proxy contract is the same as documented in **[Providers → Conventions](providers/conventions)**. This page is a leaner summary aimed at HTTP-only consumers; if anything here is ambiguous, the Conventions page is authoritative.
 
-## Proxy Endpoints
+## Proxy endpoint
 
-Base URL: `https://proxy.agentroot.app`
+```
+<METHOD> https://proxy.agentroot.app/<provider>/<upstream-path>
+```
 
-### POST /\{path\}
+Where `<provider>` is the lowercase provider slug (see the **[Providers catalog](providers/overview)** for all 54), and `<upstream-path>` is the exact path the provider's own API documents. Path parameters, query strings, and request bodies all pass through to the upstream unchanged.
 
-Proxied API call. The proxy forwards the request to the upstream provider, injecting the API key from Vault.
+### Required headers
 
-**Request Headers:**
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer <session_token>` — your agent's AgentRoot session token, *not* the upstream key |
+| `X-AgentRoot-ID` | Your agent's EAS attestation UID |
+| `Content-Type` | Usually `application/json`; whatever the upstream expects |
 
-| Header | Required | Description |
-|--------|----------|-------------|
-| `Authorization` | Yes | `Bearer <session_token>` — your agent's session token |
-| `X-AgentRoot-ID` | Yes | Your agent's EAS attestation UID |
-| `X-AgentRoot-Provider` | Yes | Provider identifier (e.g., `openai`, `anthropic`, `mistral`) |
-| `Content-Type` | Yes | Usually `application/json` |
+The upstream's own auth header (OpenAI's `Authorization: Bearer sk-...`, Stripe's `Authorization: Bearer sk_live_...`, Anthropic's `x-api-key`) is *not* sent by your code. The proxy injects it from the vault.
 
-**Request Body:** Pass through the exact body the upstream API expects. The proxy does not modify the request body.
+### Optional headers
 
-**Example:**
+| Header | Use |
+|---|---|
+| `X-AgentRoot-Provider` | Redundant with the URL path; set for audit-log clarity |
+| `X-AgentRoot-Idempotency-Key` | UUID for replay-safe retries on Writes and Transactions |
+| `X-AgentRoot-Class-Override` | Override the route's standing action class for this call only (tightening only) |
+
+### Response headers
+
+| Header | Meaning |
+|---|---|
+| `X-AgentRoot-Class` | The action class this call was classified into |
+| `X-AgentRoot-Cost-USD` | Estimated upstream cost (when known) |
+| `X-AgentRoot-Latency-MS` | Proxy + upstream round-trip time |
+| `X-AgentRoot-Request-ID` | Correlation ID — quote in support tickets |
+
+### Example
 
 ```bash
-curl -X POST https://proxy.agentroot.app/v1/chat/completions \
+curl -X POST https://proxy.agentroot.app/openai/v1/chat/completions \
   -H "Authorization: Bearer art_live_xxxxxxxxxxxx" \
   -H "X-AgentRoot-ID: 0x7a3f..." \
-  -H "X-AgentRoot-Provider: openai" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o",
@@ -40,37 +55,37 @@ curl -X POST https://proxy.agentroot.app/v1/chat/completions \
   }'
 ```
 
-**Success Response:** The upstream API's response is returned as-is, with the same status code, headers, and body.
+## Error codes
 
-**Error Responses:**
+| HTTP | Code | Tier | Retryable | Meaning |
+|---|---|---|---|---|
+| 401 | `TOKEN_EXPIRED` | — | after refresh | Session token TTL elapsed |
+| 401 | `TOKEN_REVOKED` | — | no | Operator revoked the token |
+| 401 | `TOKEN_INVALID` | — | no | Malformed or unrecognized token |
+| 403 | `AGENT_KILLED` | 2 | no | Whole agent paused |
+| 403 | `PROVIDER_DISABLED` | 1 | no | This binding off |
+| 403 | `ATTESTATION_REVOKED` | 3 | no | Onchain kill, permanent |
+| 403 | `CLASS_DENIED` | — | no | Per-class threshold or deny-by-default (Destruction) |
+| 429 | `RATE_LIMITED` | auto | after `retryAfter` | Auto-kill threshold breached |
+| 502 | `UPSTREAM_ERROR` | — | depends | Upstream returned an error |
+| 503 | `VAULT_UNAVAILABLE` | — | after recovery | Vault unreachable; fail-closed |
+| 504 | `UPSTREAM_TIMEOUT` | — | yes | Upstream exceeded timeout window |
 
-| Status | Code | Description |
-|--------|------|-------------|
-| 401 | `TOKEN_EXPIRED` | Session token has expired. Get a new one from the dashboard. |
-| 401 | `TOKEN_REVOKED` | Session token was explicitly revoked. |
-| 401 | `TOKEN_INVALID` | Session token is malformed or not recognized. |
-| 403 | `AGENT_KILLED` | Agent has been paused or terminated (Tier 2). |
-| 403 | `PROVIDER_DISABLED` | This specific API has been toggled off (Tier 1). |
-| 403 | `ATTESTATION_REVOKED` | EAS attestation has been revoked onchain (Tier 3). |
-| 429 | `RATE_LIMITED` | Usage limit exceeded. Auto-kill triggered. |
-| 502 | `UPSTREAM_ERROR` | The upstream API returned an error. |
-| 503 | `VAULT_UNAVAILABLE` | Vault is unreachable. System fails closed. |
-
-**Error Response Body:**
+Error body shape:
 
 ```json
 {
   "error": {
     "code": "AGENT_KILLED",
     "message": "Agent has been paused by operator",
-    "tier": 2
+    "tier": 2,
+    "retryable": false,
+    "requestId": "req_01HZ..."
   }
 }
 ```
 
-### GET /health
-
-Health check endpoint. Returns proxy status and connectivity to Vault.
+## Health check
 
 ```bash
 curl https://proxy.agentroot.app/health \
@@ -78,7 +93,7 @@ curl https://proxy.agentroot.app/health \
   -H "X-AgentRoot-ID: 0x7a3f..."
 ```
 
-**Response:**
+Returns:
 
 ```json
 {
@@ -89,67 +104,29 @@ curl https://proxy.agentroot.app/health \
 }
 ```
 
-## Authentication
+The `ttl_seconds` value is the remaining lifetime of your session token. If it's under 600 seconds and you're not using the SDK, refresh from the dashboard or rotate the agent before the token expires.
 
-### Session Tokens
+## Authentication tokens
 
 Format: `art_live_xxxxxxxxxxxx`
 
-Session tokens are issued by Vault during agent registration and have a 24-hour TTL. They rotate automatically. Include the token in every request as a Bearer token in the `Authorization` header.
+Session tokens are issued by the vault during agent registration and have a 24-hour TTL. They rotate automatically — the SDK handles this transparently. For raw HTTP clients, fetch a fresh token from the dashboard (or via the dashboard API documented separately) before the current one expires.
 
-### Agent ID
+A revoked or expired token produces `401 TOKEN_EXPIRED` or `401 TOKEN_REVOKED` on the next request. The agent's EAS attestation UID never changes — only the session token does.
 
-Format: `0x` + hex string (EAS attestation UID)
+## Provider identifiers
 
-The agent ID is the onchain EAS attestation UID. It's stable and permanent for the lifetime of the agent. Include it in every request in the `X-AgentRoot-ID` header.
+The full catalog of 54 launch providers — with overview, action-class defaults, and runnable code samples per language — lives at **[Providers Overview](providers/overview)**. The dashboard's "Connect" buttons deep-link to individual provider pages.
 
-### Provider Identifier
+For unlisted upstreams, see **[Custom Provider](providers/custom)** — paste a base URL, classify the routes, route traffic through AgentRoot in five minutes.
 
-The `X-AgentRoot-Provider` header tells the proxy which API key to inject. Use the provider identifiers from the table below, or use `custom` for self-hosted endpoints.
+## Streaming and idempotency
 
-| Provider | Identifier | Base URL (auto-resolved) |
-|----------|-----------|--------------------------|
-| OpenAI | `openai` | `https://api.openai.com` |
-| Anthropic | `anthropic` | `https://api.anthropic.com` |
-| Google Gemini | `google` | `https://generativelanguage.googleapis.com` |
-| Mistral | `mistral` | `https://api.mistral.ai` |
-| Cohere | `cohere` | `https://api.cohere.com` |
-| Groq | `groq` | `https://api.groq.com` |
-| Perplexity | `perplexity` | `https://api.perplexity.ai` |
-| xAI (Grok) | `xai` | `https://api.x.ai` |
-| Together AI | `together` | `https://api.together.xyz` |
-| Fireworks AI | `fireworks` | `https://api.fireworks.ai` |
-| Replicate | `replicate` | `https://api.replicate.com` |
-| Hugging Face | `huggingface` | `https://api-inference.huggingface.co` |
-| Stability AI | `stability` | `https://api.stability.ai` |
-| ElevenLabs | `elevenlabs` | `https://api.elevenlabs.io` |
-| Deepgram | `deepgram` | `https://api.deepgram.com` |
-| Pinecone | `pinecone` | `https://api.pinecone.io` |
-| Custom | `custom` | Specified by operator in dashboard |
+Both work as documented in **[Providers → Conventions](providers/conventions)** — streaming responses pass through byte-for-byte; idempotency keys deduplicate within a 24-hour window.
 
-## Rate Limits
+## Related
 
-Rate limits are set by the operator in the dashboard (per-agent, per-provider). When a limit is exceeded, the proxy returns `429 RATE_LIMITED` and the agent is auto-paused.
-
-The proxy adds rate limit headers to every response:
-
-```
-X-AgentRoot-RateLimit-Remaining: 4523
-X-AgentRoot-RateLimit-Reset: 1711000000
-```
-
-## Streaming
-
-The proxy supports streaming responses (SSE / chunked transfer encoding). Set `stream: true` in your request body as you would with the upstream API. The proxy passes through the stream without buffering.
-
-## Request Size Limits
-
-- **Request body:** 10 MB maximum
-- **Response body:** No limit (streamed through)
-- **Headers:** 8 KB maximum
-
-## Next Steps
-
-- [SDK Reference](sdk) — higher-level interface for these endpoints
-- [Kill Switch](kill-switch) — understand what each error code means for your agent
-- [Security Model](security) — how the proxy protects your credentials
+- **[SDK Reference](sdk)** — the TypeScript SDK that wraps this contract
+- **[Providers → Conventions](providers/conventions)** — the canonical proxy contract
+- **[Providers → Overview](providers/overview)** — the full catalog
+- **[Kill Switch](kill-switch)** — what each error code means at the lifecycle level

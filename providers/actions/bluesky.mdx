@@ -1,0 +1,88 @@
+---
+title: "Bluesky"
+description: "Post to AT Protocol via the Bluesky API."
+---
+
+Bluesky through AgentRoot. Your agent never holds the Bluesky API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Bluesky
+2. Paste your Bluesky API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/bluesky`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Bluesky endpoints classify as **Communication** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Bluesky through AgentRoot
+
+Representative call — `POST /xrpc/com.atproto.repo.createRecord`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/bluesky/xrpc/com.atproto.repo.createRecord' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "repo": "<did>",
+  "collection": "app.bsky.feed.post",
+  "record": {
+    "text": "hello from AgentRoot",
+    "createdAt": "2026-05-12T00:00:00Z"
+  }
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'bluesky',
+      path: '/xrpc/com.atproto.repo.createRecord',
+      method: 'POST',,
+      body: {
+  "repo": "<did>",
+  "collection": "app.bsky.feed.post",
+  "record": {
+    "text": "hello from AgentRoot",
+    "createdAt": "2026-05-12T00:00:00Z"
+  }
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/bluesky/xrpc/com.atproto.repo.createRecord",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "repo": "<did>",
+  "collection": "app.bsky.feed.post",
+  "record": {
+    "text": "hello from AgentRoot",
+    "createdAt": "2026-05-12T00:00:00Z"
+  }
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Bluesky endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Bluesky API documentation](https://docs.bsky.app/docs/get-started)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Bluesky routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

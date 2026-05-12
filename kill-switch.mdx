@@ -1,187 +1,195 @@
 ---
 title: "Kill Switch"
-description: "Four independent mechanisms to stop an agent, from surgical to nuclear."
+description: "Four mechanisms to stop an agent — at the binding level, the agent level, onchain, or automatically."
 ---
 
-# Kill Switch
+The [lifecycle](lifecycle) is the noun system — Mint, Disable, Kill, ReMint. The kill switch is the verb system — *how* each transition is enforced when you click the button. This page covers the four mechanisms, what they cost, what they cannot do, and what your agent sees when one fires.
 
-AgentRoot provides four independent kill switch tiers. Each works independently — you don't need to escalate through them in order. Use whichever matches the situation.
+If you want scenarios — when to reach for which mechanism — read [Operator Playbooks](playbooks) first.
 
-## Overview
+## The four mechanisms
 
-| Tier | Scope | Speed | Reversible | Requires |
-|------|-------|-------|------------|----------|
-| **Tier 1** | Single API | Instant | Yes | Dashboard |
-| **Tier 2** | Entire agent | Instant | Yes | Dashboard |
-| **Tier 3** | Everything (onchain) | ~30 seconds | No | Ethereum wallet |
-| **Auto-Kill** | Threshold-based | Instant | Yes (reset) | Pre-configured limits |
+| Mechanism | Lifecycle | Scope | Speed | Reversible | Requires |
+|---|---|---|---|---|---|
+| **Tier 1** | Disable (key) | One binding | Instant | Yes | Dashboard |
+| **Tier 2** | Disable (agent) | Whole agent | Instant | Yes | Dashboard |
+| **Tier 3** | Kill | Onchain | ~30 sec | No (recoverable via ReMint) | Wallet |
+| **Auto-kill** | Disable (auto) | Threshold-based | Instant | Yes (reset) | Pre-configured |
 
-## Tier 1: Toggle One API Off
+Tier 1, Tier 2, and Auto-kill are all forms of Disable — they flip a flag the proxy checks on every request. Tier 3 is the only mechanism that touches onchain state; it is the sovereign kill, and it works without AgentRoot's infrastructure.
 
-**What it does:** Disables a single API connection for an agent. The agent can still call other APIs — only the toggled provider is blocked.
+## Tier 1 — disable one API binding
 
-**How to use:** Dashboard → Agent detail → click the toggle next to any API connection.
+**What it does:** flips a per-binding flag in proxy state. The proxy returns `403 PROVIDER_DISABLED` for any call from this agent to this provider. Other providers, same agent, still work.
 
-**How it works:** The toggle sets a per-API flag in Cloudflare KV. The proxy checks this flag before every request. If the flag is "disabled," the proxy returns `403 PROVIDER_DISABLED`.
+**Where the flag lives:** Cloudflare KV at the edge. Updates propagate globally in under five seconds.
 
-**When to use:**
-- You notice unexpected calls to a specific provider
-- A provider's API is behaving erratically and you want to cut it off
-- You want to restrict an agent to a subset of its configured APIs
+**Reversibility:** click the toggle again. The flag flips back; the next call succeeds.
 
-**Reversible:** Yes. Click the toggle again to re-enable.
+**Use it for:** one-provider problems. The Stripe API is flaky and you want to cut the agent off from it without pausing the rest. The agent is making too many OpenAI calls and you want to throttle by removing the binding entirely. You're rotating a key and want to shut off this binding while you swap.
 
-## Tier 2: Pause the Entire Agent
+For multi-agent shutoffs (one provider for *every* agent), Disable the *key* instead — see [Lifecycle → Keys](lifecycle).
 
-**What it does:** Stops all API access for an agent. Every request through the proxy is rejected.
+## Tier 2 — disable the whole agent
 
-**How to use:** Dashboard → Agent detail → click **Pause Agent**.
+**What it does:** flips an agent-level flag. The proxy returns `403 AGENT_KILLED` for *every* call from this agent — it doesn't even resolve which provider was being called. Cheaper to enforce, faster to fail.
 
-**How it works:** Sets an agent-level flag in Cloudflare KV. The proxy checks this flag before any further processing. If the agent is paused, the proxy returns `403 AGENT_KILLED` immediately — it doesn't even check the session token.
+**Where the flag lives:** same Cloudflare KV layer, separate key. Same global propagation window.
 
-**When to use:**
-- The agent is behaving unexpectedly and you want to stop everything while you investigate
-- You're deploying a new version and want to ensure zero traffic during the transition
-- The "3am rogue agent" scenario — check from your phone, hit pause
+**Reversibility:** click Activate. Instant.
 
-**Reversible:** Yes. Click **Resume Agent** when ready.
+**Use it for:** agent-shaped problems. The agent is misbehaving in ways you don't yet understand. You're deploying a new version and want zero traffic during the transition. The 3am scenario in [Playbooks](playbooks) — pause first, investigate second.
 
-## Tier 3: Onchain Revocation (Nuclear)
+This is the most-used kill in practice. It's the "cut the strings" tug — you stop everything, decide what to do, then either resume or escalate to Tier 3.
 
-**What it does:** Revokes the agent's EAS attestation on Base. This is permanent, sovereign, and independent of AgentRoot infrastructure.
+## Tier 3 — revoke onchain (sovereign)
 
-**How to use:** The dashboard provides a link that opens your wallet (MetaMask, Coinbase Wallet, etc.) to sign the revocation transaction. You can also revoke directly from any EAS interface or wallet that supports EAS — you don't need the AgentRoot dashboard.
+**What it does:** sets the EAS attestation's `revocationTime` to the current block timestamp on Base. The proxy checks attestation status on every request (via a cached subgraph view, refreshed continuously) and returns `403 ATTESTATION_REVOKED` for any agent whose attestation is revoked.
 
-**How it works:** The EAS attestation's `revocationTime` is set to the current timestamp onchain. The proxy checks attestation status (via a cached view updated by The Graph subgraph) on every request. If revoked, the proxy returns `403 ATTESTATION_REVOKED`. This check is independent of Vault, the dashboard, and all AgentRoot infrastructure.
+**The critical property:** the revocation transaction is between *your wallet* and *the EAS contract on Base*. AgentRoot is not in the loop. You don't need our dashboard, our API, our subgraph, or our servers. If you have your wallet and a way to talk to Ethereum, you can kill the agent — even if AgentRoot has gone dark.
 
-**When to use:**
-- You need absolute certainty that the agent is dead
-- You've lost access to the dashboard but still have your wallet
-- AgentRoot's infrastructure is down and you need to kill the agent anyway
-- Compliance requires permanent, onchain proof that the agent was terminated
+**Sovereign mode (SIWE):** your wallet signs the revocation directly. AgentRoot's attester is uninvolved.
 
-**Reversible:** No — but recoverable. The revoked EAS attestation is marked as revoked forever. That onchain record is permanent and immutable. However, your agent's P-256 keypair and configuration still live in Vault. You can **re-mint** the agent: create a new EAS attestation with the same keypair and agent data, receive a new attestation UID, and the agent is back online. Same keys, same API connections, full history preserved. The old UID and the new UID are linked in the audit trail so the chain of custody is unbroken.
+**Managed mode (social login):** AgentRoot's attester signs the revocation on your behalf via the dashboard. This is convenient but not sovereign — if AgentRoot is offline, the kill cannot be issued. To upgrade to sovereign Tier 3, sign up with SIWE; the social-to-SIWE migration path is in development.
 
-Think of it as: kill it, fix the problem, re-mint it onchain. The revocation record proves the agent was stopped. The new attestation proves it was reborn under your authority. Both are onchain, both are permanent, both are verifiable by anyone.
+**Cost:** Base gas (typically under one cent) in sovereign mode; included in managed mode.
 
-**Sovereign:** This is the most important property. Tier 3 works from any Ethereum wallet interface. You don't need AgentRoot's dashboard, API, servers, or permission. The revocation transaction is between your wallet and the EAS contract on Base. Not even AgentRoot can override it.
+**Reversibility:** none. The revocation is permanent and onchain. But the agent is **recoverable** — see ReMint in [Lifecycle](lifecycle). Vault keys, API bindings, and audit history all carry forward to a new attestation under the same `agent_id` lineage.
 
-**Social login users:** Sovereign Tier 3 requires an Ethereum wallet. If you signed in with Google or GitHub, AgentRoot can revoke the managed attestation on your behalf from the dashboard — but this is managed revocation, not sovereign. For true sovereign control, sign up with SIWE or migrate when the social-to-SIWE upgrade path ships.
+**Use it for:** "this agent must not act under this identity again." Compromised credentials. Failed deployment that signed something it shouldn't have. End-of-life. Compliance teardown. Or any moment where you want a permanent, publicly verifiable record that the agent was stopped.
 
-### Scope of the kill primitive
+## Auto-kill — threshold-based
 
-AgentRoot can't unsign what's already signed; AgentRoot stops the *next* signature. An EIP-3009 payment authorization signed milliseconds before the owner's revoke can still be settled by the facilitator — no protocol can prevent that, and that's why x402 is decisive at settlement time. The blast radius is bounded by EOA balance and the per-tx cap encoded in the agent's attestation; the kill primitive eliminates all *future* signing authority instantly.
+**What it does:** the proxy maintains per-agent and per-key counters in Cloudflare D1. When a counter exceeds a configured threshold, the proxy automatically sets the Tier 2 flag on the offending agent (or the equivalent key-level flag) and returns `429 RATE_LIMITED` on subsequent calls.
 
-This is the correct boundary, not a limitation. The kill primitive is "no more authority from this moment forward." That's what onchain revocation buys you, and it's what makes the sovereignty claim honest: the proxy refuses to sign for a revoked attestation, and no AgentRoot infrastructure can override that. For graceful exits where you don't want any in-flight authorization to settle against an empty EOA, use **kill-with-sweep** from the dashboard — the sweep transaction runs while the attestation is still live (so the proxy's normal gate passes), then the revocation transaction follows.
+**Where to configure:** Dashboard → Agent → Auto-Kill Thresholds. Per-class quotas (Spend, Communication, Writes, Transactions, Provisioning, Destruction) are also set here — see [Action Classes](action-classes) for what each governs.
 
-## Auto-Kill: Usage Limits
+**Common thresholds operators set:**
+- Spend per day / per month
+- Request rate (requests per minute)
+- Error rate (% of failed calls in a rolling window)
+- Action-class quotas (e.g. "no more than 5 Destruction calls per hour")
+- Per-recipient Communication caps (e.g. "no more than 10 emails to the same address per day")
 
-**What it does:** Automatically pauses an agent when it exceeds pre-configured usage thresholds.
+**Reversibility:** review what tripped the threshold, raise the threshold if appropriate, click **Reset Limits**. The agent resumes.
 
-**How to configure:** Dashboard → Agent detail → **Usage Limits**. Set thresholds for:
-- Requests per day / month
-- Estimated cost per day / month
-- Data transfer limits
+**Use it for:** every agent. Auto-kill is the safety net you should never deploy without. The cost of setting a threshold and never breaching it is zero. The cost of *not* setting one and discovering at 9am Monday that the agent ran for 60 hours is unbounded.
 
-**How it works:** The proxy maintains counters in D1 (Cloudflare's SQL database) and checks them on every request. When a threshold is exceeded, the proxy sets the Tier 2 pause flag automatically and returns `429 RATE_LIMITED`.
+## What the agent sees
 
-**When to use:** Always. Set reasonable limits on every agent as a safety net. Auto-kill prevents runaway costs while you sleep.
+Each kill mechanism returns a structured error. The HTTP status is the first signal; the JSON body identifies the tier and the specific code.
 
-**Reversible:** Yes. Go to the dashboard, review the usage, and click **Reset Limits** to clear the counter and resume the agent.
-
-## What Your Agent Sees
-
-When a kill switch fires, the proxy returns a clear error response:
+| HTTP | Code | Tier | Meaning |
+|---|---|---|---|
+| 403 | `PROVIDER_DISABLED` | 1 | This binding is off; other providers may still work |
+| 403 | `AGENT_KILLED` | 2 | The whole agent is paused; nothing will work until Activate |
+| 403 | `ATTESTATION_REVOKED` | 3 | The agent's onchain identity is revoked permanently |
+| 429 | `RATE_LIMITED` | auto | A threshold was breached; review and Reset Limits |
 
 ```json
 {
   "error": {
-    "code": "PROVIDER_DISABLED",
-    "message": "Provider 'openai' has been disabled for this agent",
-    "tier": 1
+    "code": "AGENT_KILLED",
+    "message": "Agent has been paused by operator",
+    "tier": 2
   }
 }
 ```
 
-The error codes by tier:
-
-| Tier | HTTP Status | Error Code |
-|------|-------------|------------|
-| Tier 1 | 403 | `PROVIDER_DISABLED` |
-| Tier 2 | 403 | `AGENT_KILLED` |
-| Tier 3 | 403 | `ATTESTATION_REVOKED` |
-| Auto-Kill | 429 | `RATE_LIMITED` |
-
-If you're using the SDK, these are caught as typed errors:
+The SDK maps these to typed errors:
 
 ```typescript
+import { AgentRootError } from '@agentroot/sdk';
+
 try {
   await ar.proxy({ ... });
-} catch (error) {
-  if (error.code === 'AGENT_KILLED') {
-    console.log('Agent has been paused. Check the dashboard.');
-    // Gracefully shut down or enter standby
+} catch (e) {
+  if (e instanceof AgentRootError) {
+    switch (e.code) {
+      case 'AGENT_KILLED':
+      case 'ATTESTATION_REVOKED':
+        await gracefulShutdown();
+        break;
+      case 'PROVIDER_DISABLED':
+        await tryAlternateProvider();
+        break;
+      case 'RATE_LIMITED':
+        await backoffAndRetry(e.retryAfter);
+        break;
+    }
   }
 }
 ```
 
-## Kill Switch Decision Tree
+See [SDK Reference](sdk) for the full error catalog.
 
-```
-Is the problem with one specific API?
-  → Yes → Tier 1: toggle that API off
-  → No, the whole agent is misbehaving
-      → Is the situation urgent but potentially temporary?
-          → Yes → Tier 2: pause the agent
-          → No, this agent must be permanently stopped
-              → Tier 3: revoke onchain
+## Verifying a kill fired
 
-Did the agent exceed usage limits?
-  → Auto-kill already fired. Review and reset when ready.
-```
+After triggering any kill, verify it from outside the dashboard.
 
-## The 3am Scenario
-
-Your Mac Mini agent goes rogue at 3am. You're in bed with your phone. Here's the playbook:
-
-1. **Open the dashboard** on your phone → see the usage spike
-2. **Tier 2: Pause the agent** → one tap, instant, all API access stops
-3. **Review the logs** in the morning → see exactly what happened
-4. **Decide:** resume with adjusted limits, or Tier 3 revoke onchain from your wallet
-
-If you chose Tier 3 — the agent is dead onchain. But the next morning, after you've found and fixed the bug:
-
-5. **Re-mint the agent** → new EAS attestation, same keypair, same API keys, same config
-6. **New attestation UID** → linked to the old one in the audit trail
-7. **Agent is back online** → full history preserved, revocation record onchain as proof it was stopped
-
-Kill it. Fix it. Re-mint it. The onchain record tells the whole story: when it was born, when it was killed, why, and when it came back.
-
-At no point did you need SSH, a laptop, or a VPN. The kill switch works from any browser on any device. The re-mint works from the dashboard.
-
-## Verification
-
-After triggering any kill switch, verify it's working:
+**For Tier 1, 2, and Auto-kill:** make a call through the proxy. Expect a 403 (or 429) with the appropriate error code:
 
 ```bash
-# This should return 403
-curl -s -o /dev/null -w "%{http_code}" \
-  -X POST https://proxy.agentroot.app/v1/chat/completions \
-  -H "Authorization: Bearer art_live_xxxxxxxxxxxx" \
-  -H "X-AgentRoot-ID: 0x7a3f..." \
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST https://proxy.agentroot.app/openai/v1/chat/completions \
+  -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+  -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
   -H "X-AgentRoot-Provider: openai" \
   -H "Content-Type: application/json" \
-  -d '{"model":"gpt-4o","messages":[{"role":"user","content":"test"}]}'
+  -d '{"model":"gpt-4o","messages":[{"role":"user","content":"ping"}]}'
 ```
 
-For Tier 3, you can also verify onchain:
+**For Tier 3:** verify directly onchain. Any Base block explorer or EAS interface will show the attestation's `revocationTime` is non-zero. This verification works even if AgentRoot is offline — the source of truth is the chain.
 
+## Decision tree
+
+Which mechanism to reach for, in flowchart form:
+
+```mermaid
+flowchart TD
+    Start([Something is wrong]) --> Q1{Problem scoped<br/>to one provider?}
+    Q1 -->|Yes| T1[Tier 1<br/>Disable binding]
+    Q1 -->|No, whole agent| Q2{Need permanent<br/>shutdown of<br/>this identity?}
+    Q2 -->|No, investigate first| T2[Tier 2<br/>Disable agent]
+    Q2 -->|Yes, must never act<br/>under this identity again| T3[Tier 3<br/>Kill onchain]
+
+    T1 --> R1[Reversible<br/>Toggle to re-enable]
+    T2 --> R2[Reversible<br/>Activate to resume]
+    T3 --> R3[Permanent onchain<br/>Recoverable via ReMint]
+
+    Auto([Threshold breached]) --> AK[Auto-kill<br/>Tier 2 enforcement]
+    AK --> R4[Review &<br/>Reset Limits]
+
+    classDef tier1 fill:#5BA0FF,stroke:#2981FF,color:#000
+    classDef tier2 fill:#2981FF,stroke:#1A5FCC,color:#fff
+    classDef tier3 fill:#1A5FCC,stroke:#7C5CFC,color:#fff
+    classDef auto fill:#7C5CFC,stroke:#5BA0FF,color:#fff
+    class T1 tier1
+    class T2 tier2
+    class T3 tier3
+    class AK auto
 ```
-Base block explorer → EAS contract → getAttestation(uid) → revocationTime != 0
-```
 
-## Next Steps
+The default move is **Tier 2** — pause first, investigate second. Tier 1 is for known-good single-provider problems. Tier 3 is for the rare cases where you need a permanent, publicly verifiable record that the agent's identity was retired. Auto-kill should be configured on every agent as a backstop regardless of which manual tier you favor.
 
-- [Dashboard Guide](dashboard) — where to find the kill switch controls
-- [Security Model](security) — the broader threat model
-- [Architecture](architecture) — how kill switch state flows through the system
+For the operator-facing version of this — when to use each in real scenarios — see [Operator Playbooks](playbooks).
+
+## What kills do *not* do
+
+Important boundaries on what a kill can — and cannot — affect.
+
+**Kills do not unsign in-flight authorizations.** AgentRoot can't unsign what's already signed; AgentRoot stops the *next* signature. An EIP-3009 payment authorization signed milliseconds before the owner's revoke can still be settled by the facilitator — no protocol can prevent that, and that's why x402 is decisive at settlement time. The blast radius is bounded by EOA balance and the per-tx cap encoded in the agent's attestation; the kill primitive eliminates all *future* signing authority instantly. For graceful exits where you don't want any in-flight authorization to settle against an empty EOA, use **kill-with-sweep** from the dashboard — the sweep transaction runs while the attestation is still live, then the revocation transaction follows.
+
+**Kills do not delete the agent's vault state.** Vault keypair, API keys, bindings, and audit history all survive a Tier 3 Kill. That's what makes ReMint possible — same memory, fresh attestation. To purge state, hard-delete the agent from the dashboard *after* the Kill.
+
+**Kills do not affect other agents.** Each agent has its own EAS attestation, its own vault keypair, its own session token, its own bindings. Killing one agent has no operational effect on any other agent. The kill is scoped.
+
+**Kills do not break the `agent_id` lineage.** A Killed agent's `agent_id` UID is the EAS attestation UID, which is permanent. After ReMint, the new attestation has a new UID, but the `agent_id` lineage chain links them — anyone querying the chain can follow the chain of custody from incarnation to incarnation.
+
+## Related
+
+- **[Lifecycle](lifecycle)** — Mint, Disable, Kill, ReMint as first-class concepts
+- **[Operator Playbooks](playbooks)** — when to reach for which kill, in real scenarios
+- **[Action Classes](action-classes)** — per-class auto-kill thresholds
+- **[Architecture](architecture)** — how kill state propagates through the proxy
+- **[SDK Reference](sdk)** — handling kill-switch errors in agent code

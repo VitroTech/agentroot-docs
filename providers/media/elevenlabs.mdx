@@ -1,0 +1,76 @@
+---
+title: "ElevenLabs"
+description: "High-quality text-to-speech and voice cloning."
+---
+
+ElevenLabs through AgentRoot. Your agent never holds the ElevenLabs API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → ElevenLabs
+2. Paste your ElevenLabs API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/elevenlabs`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+ElevenLabs endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling ElevenLabs through AgentRoot
+
+Representative call — `POST /v1/text-to-speech/{voice_id}`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/elevenlabs/v1/text-to-speech/{voice_id}' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "text": "Hello from AgentRoot",
+  "model_id": "eleven_multilingual_v2"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'elevenlabs',
+      path: '/v1/text-to-speech/{voice_id}',
+      method: 'POST',,
+      body: {
+  "text": "Hello from AgentRoot",
+  "model_id": "eleven_multilingual_v2"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/elevenlabs/v1/text-to-speech/{voice_id}",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "text": "Hello from AgentRoot",
+  "model_id": "eleven_multilingual_v2"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete ElevenLabs endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [ElevenLabs API documentation](https://elevenlabs.io/docs/api-reference/text-to-speech)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how ElevenLabs routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

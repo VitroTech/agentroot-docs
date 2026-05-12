@@ -1,0 +1,76 @@
+---
+title: "Google Drive"
+description: "Upload, list, share files on Google Drive."
+---
+
+Google Drive through AgentRoot. Your agent never holds the Google Drive API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Google Drive
+2. Paste your Google Drive API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/drive`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Google Drive endpoints classify as **Writes** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Google Drive through AgentRoot
+
+Representative call — `POST /drive/v3/files`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/drive/drive/v3/files' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "name": "report.pdf",
+  "mimeType": "application/pdf"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'drive',
+      path: '/drive/v3/files',
+      method: 'POST',,
+      body: {
+  "name": "report.pdf",
+  "mimeType": "application/pdf"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/drive/drive/v3/files",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "name": "report.pdf",
+  "mimeType": "application/pdf"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Google Drive endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Google Drive API documentation](https://developers.google.com/drive/api/reference/rest/v3)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Google Drive routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

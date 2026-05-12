@@ -1,0 +1,303 @@
+---
+title: "OpenAI"
+description: "Route OpenAI calls through AgentRoot — chat, embeddings, audio, images, fine-tuning, files."
+icon: "openai"
+---
+
+OpenAI through AgentRoot. Your agent never holds your OpenAI API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → OpenAI
+2. Paste your OpenAI API key (`sk-...`) into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/openai`
+
+For the conventions every example on this page assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class coverage
+
+| Endpoint family | Class | Default posture |
+|---|---|---|
+| `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings` | Spend | Allow with $/day cap |
+| `/v1/audio/transcriptions`, `/v1/audio/translations`, `/v1/audio/speech` | Spend | Allow with $/day cap |
+| `/v1/images/generations`, `/v1/images/edits`, `/v1/images/variations` | Spend | Allow with $/call cap |
+| `/v1/files/*` (upload, retrieve, list) | Writes | Allow |
+| `/v1/files/{id}` `DELETE` | **Destruction** | **Deny by default** |
+| `/v1/fine_tuning/jobs/*` | Provisioning | HITL recommended |
+| `/v1/assistants/*` create / update | Provisioning | Allow with quota |
+| `/v1/threads/*` mutations | Writes | Allow |
+
+## Endpoints
+
+<AccordionGroup>
+  <Accordion title="POST /v1/chat/completions" icon="message" description="Chat completions — the most common OpenAI call. Action class: Spend.">
+    Generate a chat completion with any GPT model. Pass-through to upstream; AgentRoot adds auth and audit.
+
+    **Action class:** Spend · **Upstream docs:** [OpenAI Chat](https://platform.openai.com/docs/api-reference/chat)
+
+    <CodeGroup>
+    ```bash cURL
+    curl https://proxy.agentroot.app/openai/v1/chat/completions \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": "Hello"}]
+      }'
+    ```
+
+    ```typescript TypeScript
+    await ar.openai('/v1/chat/completions', {
+      method: 'POST',
+      body: {
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: 'Hello' }],
+      },
+    });
+    ```
+
+    ```python Python
+    import os, requests
+    requests.post(
+      "https://proxy.agentroot.app/openai/v1/chat/completions",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]},
+    )
+    ```
+    </CodeGroup>
+
+    Streaming is supported — set `stream: true` in the body and consume the SSE response as you would from the upstream.
+  </Accordion>
+
+  <Accordion title="POST /v1/embeddings" icon="vector-square" description="Generate text embeddings. Action class: Spend.">
+    Convert text into a vector embedding using `text-embedding-3-small`, `text-embedding-3-large`, or `text-embedding-ada-002`.
+
+    **Action class:** Spend · **Upstream docs:** [OpenAI Embeddings](https://platform.openai.com/docs/api-reference/embeddings)
+
+    <CodeGroup>
+    ```bash cURL
+    curl https://proxy.agentroot.app/openai/v1/embeddings \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "model": "text-embedding-3-small",
+        "input": "The Pinocchio Problem in one sentence."
+      }'
+    ```
+
+    ```typescript TypeScript
+    await ar.openai('/v1/embeddings', {
+      method: 'POST',
+      body: {
+        model: 'text-embedding-3-small',
+        input: 'The Pinocchio Problem in one sentence.',
+      },
+    });
+    ```
+
+    ```python Python
+    requests.post(
+      "https://proxy.agentroot.app/openai/v1/embeddings",
+      headers={"Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+               "X-AgentRoot-ID": os.environ['AGENTROOT_AGENT_ID']},
+      json={"model": "text-embedding-3-small", "input": "The Pinocchio Problem in one sentence."},
+    )
+    ```
+    </CodeGroup>
+  </Accordion>
+
+  <Accordion title="POST /v1/audio/speech" icon="microphone-lines" description="Text-to-speech generation. Action class: Spend.">
+    Generate audio from text using `tts-1` or `tts-1-hd`.
+
+    **Action class:** Spend · **Upstream docs:** [OpenAI Audio](https://platform.openai.com/docs/api-reference/audio/createSpeech)
+
+    <CodeGroup>
+    ```bash cURL
+    curl https://proxy.agentroot.app/openai/v1/audio/speech \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{"model":"tts-1","voice":"alloy","input":"Hello from AgentRoot"}' \
+      --output speech.mp3
+    ```
+
+    ```typescript TypeScript
+    const r = await ar.openai('/v1/audio/speech', {
+      method: 'POST',
+      body: { model: 'tts-1', voice: 'alloy', input: 'Hello from AgentRoot' },
+    });
+    // r is a Response; pipe r.body to a file or stream
+    ```
+
+    ```python Python
+    r = requests.post(
+      "https://proxy.agentroot.app/openai/v1/audio/speech",
+      headers={"Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+               "X-AgentRoot-ID": os.environ['AGENTROOT_AGENT_ID']},
+      json={"model": "tts-1", "voice": "alloy", "input": "Hello from AgentRoot"},
+    )
+    open("speech.mp3", "wb").write(r.content)
+    ```
+    </CodeGroup>
+  </Accordion>
+
+  <Accordion title="POST /v1/audio/transcriptions" icon="microphone" description="Whisper transcription of audio to text. Action class: Spend.">
+    Transcribe spoken audio using `whisper-1`. Send as multipart form-data with the audio file.
+
+    **Action class:** Spend · **Upstream docs:** [OpenAI Transcriptions](https://platform.openai.com/docs/api-reference/audio/createTranscription)
+
+    <CodeGroup>
+    ```bash cURL
+    curl https://proxy.agentroot.app/openai/v1/audio/transcriptions \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -F "file=@audio.mp3" \
+      -F "model=whisper-1"
+    ```
+
+    ```typescript TypeScript
+    const form = new FormData();
+    form.append('file', audioBlob, 'audio.mp3');
+    form.append('model', 'whisper-1');
+    await fetch('https://proxy.agentroot.app/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: ar.getAuthHeaders(),
+      body: form,
+    });
+    ```
+
+    ```python Python
+    requests.post(
+      "https://proxy.agentroot.app/openai/v1/audio/transcriptions",
+      headers={"Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+               "X-AgentRoot-ID": os.environ['AGENTROOT_AGENT_ID']},
+      files={"file": open("audio.mp3", "rb")},
+      data={"model": "whisper-1"},
+    )
+    ```
+    </CodeGroup>
+  </Accordion>
+
+  <Accordion title="POST /v1/images/generations" icon="image" description="DALL-E image generation. Action class: Spend.">
+    Generate images from a text prompt using `dall-e-3` or `dall-e-2`.
+
+    **Action class:** Spend · **Upstream docs:** [OpenAI Images](https://platform.openai.com/docs/api-reference/images)
+
+    <CodeGroup>
+    ```bash cURL
+    curl https://proxy.agentroot.app/openai/v1/images/generations \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{"model":"dall-e-3","prompt":"A wooden puppet learning to code","n":1,"size":"1024x1024"}'
+    ```
+
+    ```typescript TypeScript
+    await ar.openai('/v1/images/generations', {
+      method: 'POST',
+      body: {
+        model: 'dall-e-3',
+        prompt: 'A wooden puppet learning to code',
+        n: 1,
+        size: '1024x1024',
+      },
+    });
+    ```
+
+    ```python Python
+    requests.post(
+      "https://proxy.agentroot.app/openai/v1/images/generations",
+      headers={"Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+               "X-AgentRoot-ID": os.environ['AGENTROOT_AGENT_ID']},
+      json={"model": "dall-e-3", "prompt": "A wooden puppet learning to code", "n": 1, "size": "1024x1024"},
+    )
+    ```
+    </CodeGroup>
+  </Accordion>
+
+  <Accordion title="DELETE /v1/files/{file_id}" icon="trash" description="Delete an uploaded file. Action class: Destruction — DENY BY DEFAULT.">
+    **This endpoint is deny-by-default.** Any agent calling it without an explicit per-binding allowlist will receive `403 CLASS_DENIED`. To allow, open the dashboard, navigate to the agent's OpenAI binding, and explicitly enable the Destruction class for this route. HITL is recommended for first invocation.
+
+    **Action class:** Destruction · **Upstream docs:** [OpenAI Files](https://platform.openai.com/docs/api-reference/files/delete)
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X DELETE https://proxy.agentroot.app/openai/v1/files/file-abc123 \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID"
+    ```
+
+    ```typescript TypeScript
+    await ar.openai('/v1/files/file-abc123', { method: 'DELETE' });
+    ```
+
+    ```python Python
+    requests.delete(
+      "https://proxy.agentroot.app/openai/v1/files/file-abc123",
+      headers={"Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+               "X-AgentRoot-ID": os.environ['AGENTROOT_AGENT_ID']},
+    )
+    ```
+    </CodeGroup>
+  </Accordion>
+</AccordionGroup>
+
+## Drop-in client SDK integration
+
+If you're using OpenAI's official client SDKs, set the base URL and pass AgentRoot's auth headers — the rest of the SDK works unchanged. The `apiKey` field is required by the SDK but unused at runtime; the real key is in the vault.
+
+<CodeGroup>
+```typescript TypeScript
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  baseURL: ar.getProxyUrl('openai') + '/v1',
+  apiKey: 'unused',
+  defaultHeaders: ar.getAuthHeaders(),
+});
+
+const r = await openai.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+```python Python
+from openai import OpenAI
+
+client = OpenAI(
+  base_url=f"{os.environ['AGENTROOT_PROXY']}/openai/v1",
+  api_key="unused",
+  default_headers={
+    "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+    "X-AgentRoot-ID": os.environ['AGENTROOT_AGENT_ID'],
+  },
+)
+
+r = client.chat.completions.create(
+  model="gpt-4o",
+  messages=[{"role": "user", "content": "Hello"}],
+)
+```
+</CodeGroup>
+
+## Limits and notes
+
+- **Streaming:** supported for chat completions and `audio/speech` (PCM/MP3 streaming).
+- **Function/tool calling:** pass-through. AgentRoot does not interpret tool calls; classification and governance happen on the wire-level endpoint, not the semantic operation.
+- **Vision (image inputs):** supported via the standard chat completions endpoint with image content blocks.
+- **Realtime API (WebSocket):** not yet supported via the proxy. Use OpenAI's HTTP endpoints; WebSocket support is on the roadmap.
+- **Assistants API:** supported via `/v1/threads`, `/v1/assistants`, `/v1/runs`. Tool execution within an Assistant run does *not* route through AgentRoot — only the OpenAI calls do. If you want governance on tool execution, use the regular chat completions endpoint and handle tools yourself.
+
+## Related
+
+- **[Conventions](../conventions)** — the AgentRoot proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how OpenAI endpoints classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK with OpenAI shortcuts
+- **[Anthropic](anthropic)** — sister page for Claude models

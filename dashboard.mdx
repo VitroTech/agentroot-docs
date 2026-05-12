@@ -1,121 +1,110 @@
 ---
 title: "Dashboard Guide"
-description: "Operator guide for managing agents, API keys, monitoring, and kill switches."
+description: "How operators use ux.agentroot.app — organized by the four moments that matter."
 ---
 
-# Dashboard Guide
+The dashboard at [ux.agentroot.app](https://ux.agentroot.app) is your control plane. Most operators only need four workflows: onboarding a new agent, daily monitoring, triaging a suspicious call, and going to sleep. This page covers each in order, then leaves the rest as reference.
 
-The AgentRoot dashboard at [ux.agentroot.app](https://ux.agentroot.app) is the operator's control plane. This guide covers everything you can do from the dashboard.
+For incident-response runbooks — the moments where you need a script, not a tour — see [Operator Playbooks](playbooks).
 
-## Authentication
+## Sign in
 
-The dashboard supports two sign-in methods:
+Two sign-in methods, both give full dashboard access:
 
-**Social Login (Google / GitHub)** — click **Sign in with Google** or **Sign in with GitHub**. Fastest way to get started. AgentRoot's managed attester handles onchain attestations on your behalf.
+- **Social login (Google or GitHub)** — fastest path. AgentRoot's managed attester (`agentroot.eth`) signs onchain attestations on your behalf. You get every dashboard feature; you don't get sovereign Tier 3 (your wallet revoking onchain, independent of AgentRoot).
+- **SIWE (Sign-In with Ethereum)** — sovereign mode. Your wallet is your operator identity. Tier 3 [Kill](kill-switch) revocations sign from your wallet directly against the EAS contract on Base.
 
-**SIWE (Sign-In with Ethereum)** — click **Connect Wallet** and sign the authentication message. Your wallet becomes your operator identity with sovereign Tier 3 revocation authority.
+Migration from social to SIWE without re-registering agents is in development. If you might want sovereign control eventually, sign up with SIWE now.
 
-Both methods give you full access to all dashboard features. The difference is who holds the onchain attestation authority — see the [Quickstart](quickstart#social-login-vs-siwe-whats-different) for a detailed comparison.
+## Onboarding a new agent
 
-## Agents
+The first thing you'll do. Five clicks, two terminal commands, one proxied call.
 
-### Registering a New Agent
+1. **New Agent.** Provide a name and optional description. The vault generates a P-256 keypair; the EAS attestation is signed (your wallet in sovereign mode, AgentRoot's attester in managed mode); the agent is live.
+2. **Copy credentials.** Three values: `AGENTROOT_AGENT_ID`, `AGENTROOT_TOKEN`, `AGENTROOT_PROXY`. The "Copy All" button puts a ready-to-paste `.env` block on your clipboard.
+3. **Initialize the SDK.** From your agent's project directory: `npx @agentroot/sdk init`. The dashboard badge transitions from "Awaiting Init" to "Bound" within seconds.
+4. **Bind an API key.** Click **Add API Key**. Pick a provider, paste the key into the secure iframe (it goes straight to the vault — the dashboard never sees plaintext), label it. The dashboard never displays the value again.
+5. **Make your first call.** The wizard's last step shows a ready-to-run snippet in TypeScript, cURL, and Python. Run it. The activity stream shows the call within a second or two. You're live.
 
-Click **New Agent** and provide a name and optional description. Registration creates:
+Full step-by-step is in [Quickstart](quickstart) (split by sign-in method).
 
-- A **P-256 keypair** in Vault (private key stays in Vault)
-- An **EAS attestation** on Base (containing the public key + operator identity)
-- A **session token** for the agent to authenticate with the proxy
+## Daily operations
 
-Your wallet will prompt you to sign the attestation transaction. The gas cost on Base is minimal (< $0.01).
+The activity stream is the dashboard's center of gravity. Every proxied call appears with: timestamp, agent, provider, [action class](action-classes), path, status, latency.
 
-After registration, download or copy the agent credentials:
+**Filter aggressively.** By agent for per-agent triage. By provider when an upstream is misbehaving. By action class when you want to see all Communication events across every agent (or all Destruction events — that filter should always return zero unless you've explicitly allowed something). By time window when reviewing a specific incident.
 
-```
-AGENTROOT_AGENT_ID=0x7a3f...
-AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx
-AGENTROOT_PROXY=https://proxy.agentroot.app
-```
+**Set per-class thresholds on every agent.** Auto-kill is the safety net you should never deploy without. The configuration lives at Agent → Auto-Kill Thresholds. Common defaults to start with:
 
-### Agent Detail View
+- Spend: $X/day, $Y/month, hard cap $Z/call
+- Communication: max N sends per recipient per day; off-hours pause
+- Destruction: deny by default; explicit per-resource allowlist; HITL on the rest
+- Provisioning: max M sub-agents per parent
 
-Each agent's detail page shows:
+The values matter less than the existence — anything that can grow unbounded should have a ceiling.
 
-- **Status** — active, paused, or terminated
-- **EAS attestation UID** — link to the onchain record
-- **Connected APIs** — which providers are configured and their status (enabled/disabled)
-- **Activity log** — recent API calls with timestamps, providers, status codes, and latency
-- **Session token status** — current token TTL and last refresh time
+**Bulk operations across agents.** From the agents list, multi-select to disable several agents at once, rotate a key bound to multiple agents, or apply the same threshold pattern to a group. Bulk Disable is the right move when an upstream provider is having an incident — pause every agent that touches them in one click.
 
-### Pausing and Resuming
+## Triage: investigating a suspicious call
 
-Use the **Pause** toggle to temporarily stop all API access for an agent. This is a Tier 2 kill — instant, reversible, no onchain transaction needed. Resume when ready.
+You see something in the stream you didn't expect. Walk it down.
 
-## API Keys
+1. **Open the call.** Metadata only — request and response bodies are not stored — but everything else is there. Provider, path, method, status, latency, action class, timestamp.
+2. **Look at the calls before it.** Same agent, same time window. The trigger usually reveals itself in the immediately preceding traffic — a user message processed, a webhook fired, a scheduled job that ran.
+3. **Decide on scope.** One provider misbehaving for one agent → Disable the binding (Tier 1). Whole agent looks wrong → Disable the agent (Tier 2). Pattern repeats across agents → adjust thresholds globally.
+4. **Document and re-arm.** Add a note to the agent. Adjust thresholds if needed. Re-enable. The audit log keeps the record either way.
 
-### Adding a Key
+Full version with context: [Playbooks → Investigating a suspicious call](playbooks#investigating-a-suspicious-call).
 
-From the agent detail page, click **Add API Key**:
+## Sleep: leaving for the weekend
 
-1. **Select provider** — choose from the dropdown (OpenAI, Anthropic, Google, Mistral, Cohere, Groq, etc.) or select **Custom** to enter any URL
-2. **Paste your API key** — entered in a secure iframe on a separate origin
-3. **Add a label** (optional) — e.g., "Production GPT-4o" or "Staging Anthropic"
-4. **Save** — the key is encrypted immediately and stored in Vault
+Pre-flight before you stop checking the dashboard. Five items.
 
-The dashboard never sees the plaintext key after submission. The secure iframe at `vault.agentroot.app` encrypts the key directly into Vault. Even if the dashboard is compromised, your API keys are safe.
+- **Auto-kill thresholds set on every agent** (see above)
+- **Notification routing tested** — send yourself a test alert, confirm it lands on the device you'll have with you
+- **Mobile dashboard works on your phone** — sign in, reach an agent's detail page, see the Disable button
+- **For SIWE users — your wallet is reachable** on a mobile signer
+- **No risky deploys after lunch on Friday**
 
-### Managing Keys
+If all five check, the architecture is doing its job. Close the laptop.
 
-For each connected API, you can:
+Full checklist with rationale: [Playbooks → Leaving for the weekend](playbooks#leaving-for-the-weekend).
 
-- **Toggle on/off** — Tier 1 kill switch. Instantly enable or disable a specific API. The proxy checks this flag on every request.
-- **Replace** — submit a new key for the same provider (the old key is versioned, not deleted)
-- **Remove** — delete the key from Vault entirely
+## Reference
 
-### Supported Providers
+The rest of the dashboard, organized by surface.
 
-The dropdown includes pre-configured providers with auto-filled base URLs and auth patterns. For providers not in the list, use the **Custom** option and enter the base URL and auth header format manually.
+### Agents
 
-## Activity Monitoring
+Each agent's detail page shows status (Active / Paused / Killed), the EAS attestation UID with a link to the onchain record, connected API keys with their bindings, the activity stream filtered to this agent, the session token TTL and last refresh, and the auto-kill threshold configuration. Buttons for Disable, Kill, and (on Killed agents) ReMint.
 
-### Request Log
+### Keys
 
-The activity log shows every API call your agent makes through the proxy:
+The keys list shows every API key in the vault, with the providers they're bound to, the agents that use those bindings, and the last-used timestamp. Per-key actions: Disable (instant Tier 1 across every agent), Replace (new key swapped into the same bindings), Delete (vault ciphertext purged). The label and provider are visible; the key value is never displayed after ingestion.
 
-- **Timestamp** — when the call was made
-- **Provider** — which upstream API
-- **Path** — the endpoint called
-- **Status** — HTTP response code
-- **Latency** — round-trip time
-- **Agent** — which agent made the call (useful when managing multiple agents)
+### Activity
 
-### Filtering
+The activity surface is the unfiltered stream plus a query builder. Filters: agent, provider, action class, status code, time window. Export to CSV for offline analysis. Streams update in real time.
 
-Filter the log by agent, provider, status code, or time range. Use this to spot anomalies — unexpected providers, error spikes, or unusual call volumes.
+### Plans and billing
 
-## Kill Switch Controls
+| Plan | Agents | API slots | Proxy calls | Price |
+|---|---|---|---|---|
+| **Free** | 1 | 10 | 10K/month | $0 |
+| **Pro** | 5 | 50/agent | 100K/month | $29/month |
+| **Team** | 25 | unlimited | 500K/month | $99/month |
+| **Enterprise** | unlimited | unlimited | custom | custom |
 
-The dashboard provides direct access to Tier 1 and Tier 2 kill switches:
+Every plan includes the full kill switch, EAS identity, audit logging, and per-class thresholds. Higher tiers add more agents, higher call ceilings, team seats, longer log retention, and Enterprise-only options including on-prem vault deployment.
 
-- **Tier 1 (per-API toggle)** — click the toggle next to any API connection to disable it. Instant. The proxy rejects requests to that provider with 403.
-- **Tier 2 (agent pause)** — click **Pause Agent** to stop all API access for that agent. Instant. Reversible.
-- **Tier 3 (onchain revocation)** — for SIWE users, the dashboard shows a link to revoke the EAS attestation directly from your wallet. Permanent, sovereign, independent of AgentRoot infrastructure. For social login users, AgentRoot can revoke the managed attestation on your behalf from the dashboard. Sovereign Tier 3 (your wallet, your revocation) requires SIWE — migration from social to SIWE is in development.
+### Account
 
-For full details on all four tiers, see the [Kill Switch guide](kill-switch).
+Operator profile (wallet or social identity), API tokens for the dashboard's own read-only API, and the team-seat management surface (Team and Enterprise plans only).
 
-## Plans and Billing
+## Related
 
-| Plan | Agents | API Slots | Proxy Calls | Price |
-|------|--------|-----------|-------------|-------|
-| **Free** | 1 | 10 | 10K/mo | $0 |
-| **Pro** | 5 | 50/agent | 100K/mo | $29/mo |
-| **Team** | 25 | Unlimited | 500K/mo | $99/mo |
-| **Enterprise** | Unlimited | Unlimited | Custom | Custom |
-
-All plans include the kill switch, EAS identity, and audit logging.
-
-## Next Steps
-
-- [SDK Reference](sdk) — integrate the proxy into your agent code
-- [Kill Switch](kill-switch) — understand all four revocation tiers
-- [API Reference](api-reference) — raw HTTP endpoints for the proxy
+- **[Operator Playbooks](playbooks)** — incident response, rotation, deployment, the 3am phone call
+- **[Quickstart](quickstart)** — onboarding step-by-step for both sign-in methods
+- **[Lifecycle](lifecycle)** — Mint, Disable, Kill, ReMint as first-class concepts
+- **[Kill Switch](kill-switch)** — the four enforcement mechanisms in detail
+- **[Action Classes](action-classes)** — what each per-class threshold governs

@@ -1,0 +1,73 @@
+---
+title: "FAL"
+description: "Fast inference for image and video generation models."
+---
+
+FAL through AgentRoot. Your agent never holds the FAL API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → FAL
+2. Paste your FAL API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/fal`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+FAL endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling FAL through AgentRoot
+
+Representative call — `POST /fal-ai/flux/dev`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/fal/fal-ai/flux/dev' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "prompt": "a wooden puppet learning to code"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'fal',
+      path: '/fal-ai/flux/dev',
+      method: 'POST',,
+      body: {
+  "prompt": "a wooden puppet learning to code"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/fal/fal-ai/flux/dev",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "prompt": "a wooden puppet learning to code"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete FAL endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [FAL API documentation](https://docs.fal.ai/)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how FAL routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

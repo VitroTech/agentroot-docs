@@ -1,0 +1,97 @@
+---
+title: "Jira"
+description: "Create issues, transition tickets, manage Jira Software projects."
+---
+
+Jira through AgentRoot. Your agent never holds the Jira API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Jira
+2. Paste your Jira API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/jira`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Jira endpoints classify as **Writes** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Jira through AgentRoot
+
+Representative call — `POST /rest/api/3/issue`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/jira/rest/api/3/issue' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "fields": {
+    "project": {
+      "key": "PROJ"
+    },
+    "summary": "From the agent",
+    "issuetype": {
+      "name": "Task"
+    }
+  }
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'jira',
+      path: '/rest/api/3/issue',
+      method: 'POST',,
+      body: {
+  "fields": {
+    "project": {
+      "key": "PROJ"
+    },
+    "summary": "From the agent",
+    "issuetype": {
+      "name": "Task"
+    }
+  }
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/jira/rest/api/3/issue",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "fields": {
+    "project": {
+      "key": "PROJ"
+    },
+    "summary": "From the agent",
+    "issuetype": {
+      "name": "Task"
+    }
+  }
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Jira endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Jira API documentation](https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Jira routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

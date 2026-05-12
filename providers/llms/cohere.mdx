@@ -1,0 +1,73 @@
+---
+title: "Cohere"
+description: "Cohere Command, Embed, and Rerank models for generation, embeddings, and retrieval."
+---
+
+Cohere through AgentRoot. Your agent never holds the Cohere API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Cohere
+2. Paste your Cohere API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/cohere`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Cohere endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Cohere through AgentRoot
+
+Representative call — `POST /v1/chat`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/cohere/v1/chat' \
+  -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+  -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "model": "command-r-plus",
+  "message": "Hello"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+  provider: 'cohere',
+  path: '/v1/chat',
+  method: 'POST',
+  body: {
+    model: 'command-r-plus',
+    message: 'Hello',
+  },
+});
+```
+
+```python Python
+import os, requests
+requests.post(
+  "https://proxy.agentroot.app/cohere/v1/chat",
+  headers={
+    "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+    "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+  },
+  json={"model": "command-r-plus", "message": "Hello"},
+)
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Cohere endpoint catalog is callable through the AgentRoot proxy using the pattern above — chat, generate, embed, rerank, classify, summarize. Substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Cohere API documentation](https://docs.cohere.com/reference/about)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Cohere routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

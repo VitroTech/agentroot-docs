@@ -1,0 +1,76 @@
+---
+title: "GitHub"
+description: "Create issues, comment on PRs, manage repos via the GitHub REST API."
+---
+
+GitHub through AgentRoot. Your agent never holds the GitHub API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → GitHub
+2. Paste your GitHub API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/github`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+GitHub endpoints classify as **Writes** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling GitHub through AgentRoot
+
+Representative call — `POST /repos/{owner}/{repo}/issues`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/github/repos/{owner}/{repo}/issues' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "title": "From the agent",
+  "body": "This issue was filed by an AgentRoot-governed agent."
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'github',
+      path: '/repos/{owner}/{repo}/issues',
+      method: 'POST',,
+      body: {
+  "title": "From the agent",
+  "body": "This issue was filed by an AgentRoot-governed agent."
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/github/repos/{owner}/{repo}/issues",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "title": "From the agent",
+  "body": "This issue was filed by an AgentRoot-governed agent."
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete GitHub endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [GitHub API documentation](https://docs.github.com/en/rest)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how GitHub routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

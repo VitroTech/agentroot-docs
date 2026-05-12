@@ -1,0 +1,36 @@
+---
+title: "AutoGPT"
+description: "Use AgentRoot's proxy as AutoGPT's LLM base URL for governed autonomous loops."
+---
+
+AutoGPT is a client-side framework. AgentRoot governs the calls AutoGPT makes to upstream APIs — not the AutoGPT library itself. The framework loads in your runtime; the AgentRoot proxy sits between your runtime and every external API the framework reaches.
+
+## Setup
+
+1. **Mint an agent** in the AgentRoot dashboard and grab your three env vars
+2. **Bind the providers** your AutoGPT workflow will use (OpenAI, Slack, Stripe, whatever the agent calls)
+3. **Configure AutoGPT** to point its LLM clients at the AgentRoot proxy — pattern depends on which underlying LLM you use
+
+## Integration pattern
+
+For LLM calls within AutoGPT, configure the underlying client (OpenAI SDK, Anthropic SDK, etc.) with AgentRoot's base URL and auth headers. See the relevant LLM provider page for the exact configuration:
+
+- **OpenAI through AgentRoot** — [providers/llms/openai](../llms/openai) → "Drop-in client SDK integration"
+- **Anthropic through AgentRoot** — [providers/llms/anthropic](../llms/anthropic)
+- **Other LLM providers** — see the [LLMs catalog](../llms/openai)
+
+For non-LLM external calls (Slack, Stripe, GitHub) that your AutoGPT tools make, use AgentRoot's `proxy()` from the [SDK](/sdk) or fetch directly through the proxy — see [Conventions](../conventions).
+
+## Action class governance
+
+AutoGPT itself doesn't have an action class — it runs in your process. The classes apply to the calls AutoGPT makes to upstreams. AgentRoot's per-class auto-kill thresholds and the kill switch tiers apply to every call regardless of which framework triggered it.
+
+## Upstream docs
+
+[AutoGPT documentation](https://docs.agpt.co/)
+
+## Related
+
+- **[SDK Reference](/sdk)** — the TypeScript SDK with built-in AutoGPT-compatible helpers
+- **[Conventions](../conventions)** — the proxy contract used by every framework integration
+- **[Operator Playbooks](/playbooks)** — incident response, applicable to any framework

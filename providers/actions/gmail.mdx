@@ -1,0 +1,73 @@
+---
+title: "Gmail"
+description: "Send email and manage Gmail mailboxes via the Google API."
+---
+
+Gmail through AgentRoot. Your agent never holds the Gmail API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Gmail
+2. Paste your Gmail API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/gmail`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Gmail endpoints classify as **Communication** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Gmail through AgentRoot
+
+Representative call — `POST /gmail/v1/users/me/messages/send`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/gmail/gmail/v1/users/me/messages/send' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "raw": "<base64-encoded MIME message>"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'gmail',
+      path: '/gmail/v1/users/me/messages/send',
+      method: 'POST',,
+      body: {
+  "raw": "<base64-encoded MIME message>"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/gmail/gmail/v1/users/me/messages/send",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "raw": "<base64-encoded MIME message>"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Gmail endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Gmail API documentation](https://developers.google.com/gmail/api/reference/rest)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Gmail routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

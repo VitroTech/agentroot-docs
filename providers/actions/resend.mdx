@@ -1,0 +1,82 @@
+---
+title: "Resend"
+description: "Developer-friendly transactional email API."
+---
+
+Resend through AgentRoot. Your agent never holds the Resend API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Resend
+2. Paste your Resend API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/resend`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Resend endpoints classify as **Communication** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Resend through AgentRoot
+
+Representative call — `POST /emails`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/resend/emails' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "from": "agent@example.com",
+  "to": "user@example.com",
+  "subject": "Hello",
+  "html": "<p>hello from AgentRoot</p>"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'resend',
+      path: '/emails',
+      method: 'POST',,
+      body: {
+  "from": "agent@example.com",
+  "to": "user@example.com",
+  "subject": "Hello",
+  "html": "<p>hello from AgentRoot</p>"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/resend/emails",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "from": "agent@example.com",
+  "to": "user@example.com",
+  "subject": "Hello",
+  "html": "<p>hello from AgentRoot</p>"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Resend endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Resend API documentation](https://resend.com/docs/api-reference/introduction)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Resend routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

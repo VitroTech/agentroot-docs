@@ -1,0 +1,85 @@
+---
+title: "Apify"
+description: "Web scraping and browser automation actors."
+---
+
+Apify through AgentRoot. Your agent never holds the Apify API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Apify
+2. Paste your Apify API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/apify`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Apify endpoints classify as **Writes** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Apify through AgentRoot
+
+Representative call — `POST /v2/acts/{actor_id}/runs`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/apify/v2/acts/{actor_id}/runs' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "input": {
+    "startUrls": [
+      "https://example.com"
+    ]
+  }
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'apify',
+      path: '/v2/acts/{actor_id}/runs',
+      method: 'POST',,
+      body: {
+  "input": {
+    "startUrls": [
+      "https://example.com"
+    ]
+  }
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/apify/v2/acts/{actor_id}/runs",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "input": {
+    "startUrls": [
+      "https://example.com"
+    ]
+  }
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Apify endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Apify API documentation](https://docs.apify.com/api/v2)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Apify routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

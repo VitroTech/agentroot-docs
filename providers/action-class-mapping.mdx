@@ -1,0 +1,109 @@
+---
+title: "Action Class Mapping"
+description: "How AgentRoot classifies every endpoint, and how to override classification for custom routes."
+---
+
+Every proxied call is classified into one of six action classes — Spend, Communication, Writes, Transactions, Provisioning, Destruction — at the proxy layer, *before* the call reaches the upstream. This page documents how classification works.
+
+For the *why* — what each class governs and the philosophy behind the six-class taxonomy — see [Action Classes](/action-classes).
+
+## Default classification rules
+
+For preset providers (everything in this catalog except Custom), AgentRoot maintains a per-route classification table. The rules below describe the defaults for routes that aren't in the table or for the Custom provider.
+
+### By HTTP method
+
+| Method | Default class | Reasoning |
+|---|---|---|
+| `GET` | Writes (read) | Reads cost upstream credits even when they don't mutate state |
+| `POST` | Writes | Most mutations; refined by path inspection |
+| `PUT` | Writes | Idempotent updates |
+| `PATCH` | Writes | Partial updates |
+| `DELETE` | **Destruction** | Always — deny-by-default unless explicitly allowlisted |
+
+### Path-based refinements
+
+When the path contains specific keywords, the classifier upgrades the default to a more specific class:
+
+| Pattern | Class |
+|---|---|
+| `/chat/completions`, `/messages`, `/completions`, `/embeddings`, `/generate`, `/predict` | Spend |
+| `/audio/`, `/images/`, `/transcriptions`, `/translations`, `/tts` | Spend |
+| `/send`, `/messages`, `/posts`, `/notifications`, `/emails`, `/sms` | Communication |
+| `/payments`, `/charges`, `/refunds`, `/payouts`, `/invoices`, `/subscriptions` | Transactions |
+| `/transfer`, `/transactions`, `/approve`, `/swap`, `/bridge` | Transactions |
+| `/keys`, `/tokens`, `/credentials`, `/agents`, `/projects`, `/teams` | Provisioning |
+| `/purge`, `/wipe`, `/factory-reset`, `/uninstall`, `/revoke` | Destruction |
+
+When multiple patterns match, the more restrictive class wins. `DELETE /v1/agents/{id}/keys/{key_id}` matches both "keys" (Provisioning) and `DELETE` (Destruction) — the call is classified as Destruction.
+
+### Per-provider overrides
+
+Some providers' canonical endpoints are misclassified by the generic rules and have explicit override tables. For example:
+
+- **Stripe** — `POST /v1/refunds` is **Transactions**, not Writes. `POST /v1/charges` is **Transactions**. `POST /v1/customers` is Writes.
+- **Slack** — `POST /api/chat.postMessage` is **Communication**, not Writes (despite being a POST that mutates a channel's state).
+- **Twilio** — `POST /2010-04-01/Accounts/.../Messages.json` is **Communication**.
+- **GitHub** — `DELETE /repos/{owner}/{repo}` is **Destruction**. `POST /repos/{owner}/{repo}/issues` is Writes (not Communication — issue creation is mutation, not message delivery).
+
+The per-provider overrides are documented on each provider page in the "Action class coverage" section.
+
+## What a class assignment means at runtime
+
+When the proxy receives a request, it:
+
+1. Classifies the call into an action class
+2. Checks the operator's per-class auto-kill thresholds (Spend $/day, Communication sends/hour, Destruction quota, etc.)
+3. Applies per-class default postures (Destruction is deny-by-default; everything else is allow-with-cap)
+4. If the call passes both, forwards to the upstream
+
+The class assignment is included in the `X-AgentRoot-Class` response header and recorded in the audit log on every call.
+
+```http
+HTTP/1.1 200 OK
+X-AgentRoot-Class: spend
+X-AgentRoot-Cost-USD: 0.0042
+X-AgentRoot-Latency-MS: 287
+```
+
+## When the classifier returns `unknown`
+
+If a route doesn't match any preset rule, the classifier returns `unknown` and treats the call as **Writes** (the conservative middle ground). The call still goes through, but it's flagged in the audit log so you can review and classify it correctly.
+
+To set a permanent classification for an unknown route — either on a preset provider or on a Custom provider — open the dashboard, navigate to the agent's bindings, click the route in the audit log, and pick the correct class from the dropdown.
+
+## Overriding classifications
+
+There are two override paths.
+
+### Per-binding override (dashboard)
+
+For any route on any provider, the operator can override the default class. This is useful when:
+
+- You've custom-built an integration on top of a preset provider and the generic path classifier gets it wrong
+- A new endpoint launched at the upstream that isn't yet in AgentRoot's classification table
+- You want to be more restrictive than the default (e.g., classifying a `POST /webhooks/configure` as **Provisioning** instead of Writes to bring it under a tighter quota)
+
+Overrides are stored per (agent, provider, path-pattern) tuple. They take effect immediately.
+
+### Per-request override (header)
+
+For programmatic cases — e.g., a CI system that needs a specific call classified differently from the same path's runtime classification — send the `X-AgentRoot-Class-Override` header with the desired class name:
+
+```http
+POST https://proxy.agentroot.app/custom/v1/internal-api
+X-AgentRoot-Class-Override: provisioning
+```
+
+Per-request overrides are logged separately in the audit trail (the override action is itself audited). The proxy enforces that the override doesn't *relax* a class to a less restrictive one — you can override Writes → Destruction (more restrictive), not Destruction → Writes (less restrictive). Operators control this asymmetry; the agent cannot relax its own governance.
+
+## Custom provider classification
+
+For the [Custom provider](custom), every route is `unknown` by default. The first call to a new route classifies as Writes and surfaces in the dashboard for manual classification. Operators should classify every active Custom route — leaving routes as `unknown` means they're governed by the conservative Writes default, which may be too loose or too tight depending on what the route does.
+
+## Where to learn more
+
+- **[Action Classes](/action-classes)** — what each class governs, with examples
+- **[Kill Switch](/kill-switch)** — how per-class auto-kill thresholds interact with the four kill tiers
+- **[Custom](custom)** — classifying routes on a Custom provider
+- **[Operator Playbooks](/playbooks)** — the "investigating a suspicious call" runbook uses class assignments as the primary triage signal

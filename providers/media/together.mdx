@@ -1,0 +1,91 @@
+---
+title: "Together AI"
+description: "Hosted inference for open-source models — Llama, Mixtral, Qwen, more."
+---
+
+Together AI through AgentRoot. Your agent never holds the Together AI API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Together AI
+2. Paste your Together AI API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/together`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Together AI endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Together AI through AgentRoot
+
+Representative call — `POST /v1/chat/completions`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/together/v1/chat/completions' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "model": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello"
+    }
+  ]
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'together',
+      path: '/v1/chat/completions',
+      method: 'POST',,
+      body: {
+  "model": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello"
+    }
+  ]
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/together/v1/chat/completions",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "model": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello"
+    }
+  ]
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Together AI endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Together AI API documentation](https://docs.together.ai/reference/chat-completions)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Together AI routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

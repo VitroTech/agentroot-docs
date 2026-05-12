@@ -30,53 +30,157 @@
     }
   },
   "navigation": {
-    "anchors": [
+    "tabs": [
       {
-        "anchor": "GitHub",
-        "icon": "github",
-        "href": "https://github.com/VitroTech"
-      },
-      {
-        "anchor": "SDK",
-        "icon": "npm",
-        "href": "https://www.npmjs.com/package/@agentroot/sdk"
-      }
-    ],
-    "groups": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "introduction",
-          "action-classes",
-          "lifecycle",
-          "quickstart",
-          "quickstart-social",
-          "quickstart-siwe"
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "action-classes",
+              "lifecycle",
+              "quickstart",
+              "quickstart-social",
+              "quickstart-siwe"
+            ]
+          },
+          {
+            "group": "Platform",
+            "pages": [
+              "architecture",
+              "dashboard",
+              "playbooks",
+              "kill-switch",
+              "security"
+            ]
+          },
+          {
+            "group": "Developer",
+            "pages": [
+              "sdk",
+              "api-reference"
+            ]
+          },
+          {
+            "group": "Trust & Compliance",
+            "pages": [
+              "compliance",
+              "trust-center",
+              "subprocessors",
+              "vulnerability-disclosure"
+            ]
+          }
         ]
       },
       {
-        "group": "Platform",
-        "pages": [
-          "architecture",
-          "dashboard",
-          "kill-switch",
-          "security"
-        ]
-      },
-      {
-        "group": "Developer",
-        "pages": [
-          "sdk",
-          "api-reference"
-        ]
-      },
-      {
-        "group": "Trust & Compliance",
-        "pages": [
-          "compliance",
-          "trust-center",
-          "subprocessors",
-          "vulnerability-disclosure"
+        "tab": "Providers",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "providers/overview",
+              "providers/conventions",
+              "providers/action-class-mapping",
+              "providers/custom"
+            ]
+          },
+          {
+            "group": "LLMs",
+            "icon": "brain",
+            "expanded": false,
+            "pages": [
+              "providers/llms/openai",
+              "providers/llms/anthropic",
+              "providers/llms/google",
+              "providers/llms/xai",
+              "providers/llms/groq",
+              "providers/llms/openrouter",
+              "providers/llms/mistral",
+              "providers/llms/perplexity",
+              "providers/llms/cohere",
+              "providers/llms/fireworks"
+            ]
+          },
+          {
+            "group": "Actions",
+            "icon": "bolt",
+            "expanded": false,
+            "pages": [
+              "providers/actions/gmail",
+              "providers/actions/google-calendar",
+              "providers/actions/drive",
+              "providers/actions/slack",
+              "providers/actions/discord",
+              "providers/actions/github",
+              "providers/actions/notion",
+              "providers/actions/linear",
+              "providers/actions/jira",
+              "providers/actions/asana",
+              "providers/actions/stripe",
+              "providers/actions/twilio",
+              "providers/actions/sendgrid",
+              "providers/actions/resend",
+              "providers/actions/supabase",
+              "providers/actions/airtable",
+              "providers/actions/plaid",
+              "providers/actions/calendly",
+              "providers/actions/bluesky"
+            ]
+          },
+          {
+            "group": "Tools",
+            "icon": "wrench",
+            "expanded": false,
+            "pages": [
+              "providers/tools/tavily",
+              "providers/tools/exa",
+              "providers/tools/firecrawl",
+              "providers/tools/browserbase",
+              "providers/tools/e2b",
+              "providers/tools/apify",
+              "providers/tools/serpapi",
+              "providers/tools/pinecone"
+            ]
+          },
+          {
+            "group": "Media",
+            "icon": "image",
+            "expanded": false,
+            "pages": [
+              "providers/media/x",
+              "providers/media/replicate",
+              "providers/media/fal",
+              "providers/media/stability",
+              "providers/media/elevenlabs",
+              "providers/media/cartesia",
+              "providers/media/deepgram",
+              "providers/media/huggingface",
+              "providers/media/together"
+            ]
+          },
+          {
+            "group": "Frameworks",
+            "icon": "puzzle-piece",
+            "expanded": false,
+            "pages": [
+              "providers/frameworks/langchain",
+              "providers/frameworks/crewai",
+              "providers/frameworks/autogpt",
+              "providers/frameworks/openclaw"
+            ]
+          },
+          {
+            "group": "Wallets",
+            "icon": "wallet",
+            "expanded": false,
+            "pages": [
+              "providers/wallets/metamask",
+              "providers/wallets/coinbase",
+              "providers/wallets/rainbow",
+              "providers/wallets/walletconnect"
+            ]
+          }
         ]
       }
     ]

@@ -1,0 +1,40 @@
+---
+title: "MetaMask"
+description: "Sign in to AgentRoot with MetaMask. SIWE auth + sovereign Tier 3 from the same wallet."
+---
+
+MetaMask is an identity-layer integration. AgentRoot does not proxy MetaMask calls — wallets don't have proxiable APIs in the AgentRoot sense. Instead, MetaMask signs the messages that authenticate you to AgentRoot (SIWE) and, in sovereign mode, signs the onchain EAS revocations that constitute the Tier 3 kill switch.
+
+## What MetaMask support means
+
+- **Sign in to the dashboard** — MetaMask signs the SIWE message at `ux.agentroot.app`. Your wallet address becomes your operator identity.
+- **Mint agents from your wallet** — the EAS attestation transaction on Base is signed by MetaMask.
+- **Sovereign Tier 3 kill** — revoke an agent's attestation onchain by signing a revocation transaction from MetaMask. This works directly against the EAS contract on Base — AgentRoot is not in the loop.
+- **ReMint** — after a Kill, sign a new attestation from MetaMask to bring the agent back under a fresh identity.
+
+## What MetaMask does *not* do for AgentRoot
+
+- Hold your upstream API keys (those live in the vault, not in your wallet)
+- Sign every proxied request (the agent's session token signs those, not your wallet)
+- Run anywhere near the agent's runtime (the wallet stays on your operator device)
+
+The pattern: **wallet is operator identity, vault is key custody, proxy is runtime.** Three separate trust boundaries; MetaMask only crosses the first one.
+
+## Setup
+
+1. Install MetaMask on the device you'll administer agents from (laptop or phone)
+2. Go to [ux.agentroot.app](https://ux.agentroot.app) → **Connect Wallet** → pick MetaMask
+3. Sign the SIWE message to authenticate
+4. Your wallet address is now your operator identity for AgentRoot
+
+For mobile signing during a Tier 3 kill, the MetaMask mobile app handles the EAS revocation transaction the same way it would any other Base transaction.
+
+## Upstream docs
+
+[MetaMask documentation](https://docs.metamask.io/wallet/)
+
+## Related
+
+- **[Quickstart: SIWE](/quickstart-siwe)** — full setup with a wallet
+- **[Kill Switch → Tier 3](/kill-switch)** — sovereign onchain revocation
+- **[Lifecycle](/lifecycle)** — Mint, Disable, Kill, ReMint

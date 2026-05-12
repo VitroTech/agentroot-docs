@@ -47,9 +47,13 @@ See [Action Classes](action-classes) for the full taxonomy.
 
 ## Why onchain matters
 
-A centralized kill switch — an HTTP call to revoke access — has a race condition. A capable agent can intercept the call, revoke the revoker, or spin up a replacement before shutdown completes. An onchain EAS revocation is different. The agent can't front-run a wallet signature it doesn't hold. It can't modify the EAS contract. It can't economically censor a transaction across Ethereum's validator set. The kill switch lives in a computational domain the agent literally cannot reach.
+AgentRoot anchors every agent's identity to the **Ethereum Attestation Service (EAS)** — a public smart contract on Base (Coinbase's Ethereum L2) where the agent's public key and operator wallet are recorded as a signed, tamper-proof attestation. Revoking that attestation is a single onchain transaction signed from your wallet, and the proxy checks revocation status on every request.
+
+That changes the math on the kill switch. A centralized kill switch — an HTTP call to revoke access — has a race condition. A capable agent can intercept the call, revoke the revoker, or spin up a replacement before shutdown completes. An onchain EAS revocation is different. The agent can't front-run a wallet signature it doesn't hold. It can't modify the EAS contract. It can't economically censor a transaction across Ethereum's validator set. The kill switch lives in a computational domain the agent literally cannot reach.
 
 Your kill authority survives even if AgentRoot goes down. That's what "root" means.
+
+The same architecture works for recovery. If your Pinocchio is ever wounded — a bug, a breach, a bad day — you don't replace him. You **ReMint**: same vault keys, same API bindings, same `agent_id` lineage, fresh onchain attestation. The old attestation stays revoked forever as a tombstone; the new one proves you brought him back. See [Lifecycle](lifecycle) for the full state machine.
 
 ## How to read these docs
 

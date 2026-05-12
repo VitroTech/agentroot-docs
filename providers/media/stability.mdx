@@ -1,0 +1,73 @@
+---
+title: "Stability AI"
+description: "Stable Diffusion image generation, video generation, upscaling."
+---
+
+Stability AI through AgentRoot. Your agent never holds the Stability AI API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Stability AI
+2. Paste your Stability AI API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/stability`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Stability AI endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Stability AI through AgentRoot
+
+Representative call — `POST /v2beta/stable-image/generate/sd3`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/stability/v2beta/stable-image/generate/sd3' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "prompt": "a wooden puppet"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'stability',
+      path: '/v2beta/stable-image/generate/sd3',
+      method: 'POST',,
+      body: {
+  "prompt": "a wooden puppet"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/stability/v2beta/stable-image/generate/sd3",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "prompt": "a wooden puppet"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Stability AI endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Stability AI API documentation](https://platform.stability.ai/docs/api-reference)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Stability AI routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

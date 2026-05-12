@@ -1,0 +1,76 @@
+---
+title: "Tavily"
+description: "AI-optimized search and content extraction."
+---
+
+Tavily through AgentRoot. Your agent never holds the Tavily API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Tavily
+2. Paste your Tavily API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/tavily`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Tavily endpoints classify as **Writes** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Tavily through AgentRoot
+
+Representative call — `POST /search`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/tavily/search' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "api_key": "<auto-injected>",
+  "query": "latest AgentRoot news"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'tavily',
+      path: '/search',
+      method: 'POST',,
+      body: {
+  "api_key": "<auto-injected>",
+  "query": "latest AgentRoot news"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/tavily/search",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "api_key": "<auto-injected>",
+  "query": "latest AgentRoot news"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Tavily endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Tavily API documentation](https://docs.tavily.com/docs/rest-api/api-reference)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Tavily routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

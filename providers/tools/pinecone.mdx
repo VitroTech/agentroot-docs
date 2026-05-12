@@ -1,0 +1,87 @@
+---
+title: "Pinecone"
+description: "Vector database for retrieval — upsert, query, and manage embeddings across namespaces."
+---
+
+Pinecone through AgentRoot. Your agent never holds the Pinecone API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Pinecone
+2. Paste your Pinecone API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/pinecone`
+
+Pinecone uses per-index host URLs. The proxy follows the same convention — the path you pass after `/pinecone/` is the path on your index host. If your index is at `https://my-index-abc123.svc.us-east-1-aws.pinecone.io`, queries become `https://proxy.agentroot.app/pinecone/my-index-abc123.svc.us-east-1-aws.pinecone.io/query`.
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Pinecone endpoints classify by default as follows:
+
+| Operation | Class |
+|---|---|
+| `POST /query` | Writes (read with cost) |
+| `POST /vectors/upsert` | Writes |
+| `POST /vectors/delete` | **Destruction** — deny-by-default |
+| `DELETE /indexes/{name}` | **Destruction** — deny-by-default |
+| Index creation, namespace listing | Provisioning |
+
+The Destruction classifications are deny-by-default. To allow `vectors/delete` or index deletion for a specific binding, override from the dashboard. See [Action Class Mapping → Overriding classifications](../action-class-mapping#overriding-classifications).
+
+## Calling Pinecone through AgentRoot
+
+Representative call — `POST /query` against an index host:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/pinecone/my-index-abc123.svc.us-east-1-aws.pinecone.io/query' \
+  -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+  -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "vector": [0.1, 0.2, 0.3],
+  "topK": 5,
+  "includeMetadata": true
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+  provider: 'pinecone',
+  path: '/my-index-abc123.svc.us-east-1-aws.pinecone.io/query',
+  method: 'POST',
+  body: {
+    vector: [0.1, 0.2, 0.3],
+    topK: 5,
+    includeMetadata: true,
+  },
+});
+```
+
+```python Python
+import os, requests
+requests.post(
+  "https://proxy.agentroot.app/pinecone/my-index-abc123.svc.us-east-1-aws.pinecone.io/query",
+  headers={
+    "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+    "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+  },
+  json={"vector": [0.1, 0.2, 0.3], "topK": 5, "includeMetadata": True},
+)
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Pinecone endpoint catalog is callable through the AgentRoot proxy — index management (`/indexes`), vector operations (`/query`, `/vectors/upsert`, `/vectors/fetch`, `/vectors/delete`), and namespace operations. Substitute the path from the upstream's API reference.
+
+**Upstream reference:** [Pinecone API documentation](https://docs.pinecone.io/reference/api/introduction)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Pinecone routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

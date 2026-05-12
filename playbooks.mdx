@@ -1,0 +1,113 @@
+---
+title: "Operator Playbooks"
+description: "Scenario-based runbooks for the moments that matter — incident response, rotation, deployment, and the 3am phone call."
+---
+
+The dashboard explains what every button does. These playbooks explain when to reach for which button. Each one is written for a specific moment in an operator's life — the kind where you don't want to be reading reference docs.
+
+## The 3am rogue agent
+
+Your phone buzzes. The dashboard shows a usage spike on a customer-support agent. It's 3am. You're in bed. You don't have your laptop. Here's the playbook.
+
+**Step 1 — Pause first, investigate later.** Open the dashboard on your phone. Hit **Disable Agent** on the offending agent (lifecycle: Disable; technical tier: Tier 2). One tap. Every API the agent reaches goes silent. The blast radius stops growing while you decide what to do next.
+
+**Step 2 — Look at the activity stream.** Filter by the agent. Look for what changed: which provider, which action class, which time window. Common 3am patterns:
+
+- **Spend spike on one provider** — usually a runaway loop. Auto-kill should have caught it; if it didn't, your threshold was too high.
+- **Burst of Communication calls** — usually a prompt injection. Check the latest inbound message the agent processed.
+- **Any Destruction calls** — always investigate immediately. Destruction is deny-by-default; if you see one, either you allowed it explicitly or something is wrong.
+
+**Step 3 — Decide.** You have three options.
+
+- *Resume with adjusted limits.* Bug was real but minor. Set tighter auto-kill thresholds, re-enable. The agent is back online in seconds, with a smaller leash.
+- *Investigate further before resuming.* Disable the agent stays on. Add a comment to the dashboard so your morning self has context. Go back to sleep.
+- *Kill onchain.* The agent must not act again under this identity. Open your wallet, sign the EAS revocation. Permanent. Sovereign. AgentRoot's infrastructure is not in the loop — even if the dashboard is offline, the kill works. See [Lifecycle → Kill](lifecycle).
+
+**Step 4 — In the morning, ReMint if appropriate.** If you Killed the agent in anger, you can ReMint after fixing the root cause. Same vault keys, same API bindings, fresh attestation. The audit trail tells the whole story: born, killed, reborn under your authority.
+
+**What you didn't have to do:** SSH into a box. Open a laptop. Connect to a VPN. Reach a co-founder. Wake up an on-call engineer.
+
+## Investigating a suspicious call
+
+Activity stream shows one call you didn't expect. Maybe it's a provider you don't recognize for that agent, or a path that looks unusual, or a status code that's not 200.
+
+**Step 1 — Open the call.** The dashboard shows the full request metadata: agent, provider, action class, path, method, status, latency, timestamp. Not the request or response body — those are not stored — but everything else.
+
+**Step 2 — Trace the trigger.** Look at the calls *before* the suspicious one in the same agent's stream. Was the agent processing user input? An incoming message? A scheduled job? The pattern of calls leading up to the suspicious one usually identifies the trigger.
+
+**Step 3 — Decide on scope.** Three scopes, three actions.
+
+- *Just this provider.* Disable the binding (Tier 1). Other providers stay live. Use this when one upstream is misbehaving — its API is flaky, or you don't trust the agent with it specifically.
+- *This whole agent.* Disable the agent (Tier 2). Use this when you don't yet know what's wrong but want everything to stop.
+- *This class of action across all agents.* Adjust the per-class auto-kill thresholds. Useful when you discover, e.g., that you should never have allowed Destruction calls without HITL.
+
+**Step 4 — Document and re-arm.** Add a note to the agent describing what you found. Adjust thresholds. Re-enable. The audit trail keeps the record.
+
+## Leaving for the weekend
+
+Pre-flight checklist. Run through this before you stop checking the dashboard for 48+ hours.
+
+- **Auto-kill thresholds are set on every agent.** Per-day spend cap, per-hour Communication rate, per-day Destruction limit. The values matter less than the existence — anything that can grow unbounded should have a ceiling.
+- **Notification routing works.** Send yourself a test alert. Confirm it lands on the device you'll have with you (phone, watch). The dashboard knowing about a problem is useless if you don't.
+- **Mobile dashboard works on your phone.** Open `ux.agentroot.app` on your phone right now. Confirm you can sign in (social or wallet). Confirm you can reach an agent's detail page and see the Disable button.
+- **For SIWE users: your wallet is reachable.** A mobile wallet (MetaMask, Rainbow, Coinbase Wallet) is enough. Confirm you can sign a test transaction. Tier 3 doesn't help if you can't reach your wallet.
+- **Recent commits are deployed and stable.** Don't ship anything risky on Friday afternoon. The dashboard alerts on errors, but a config bug that compiles cleanly will run for the weekend before you notice.
+
+If all five are checked, close the laptop. The architecture is doing its job.
+
+## Rotating a compromised key
+
+You discover (or your provider tells you) that one of your upstream API keys has leaked. Standard rotation playbook, with one twist: a single click stops every agent that uses the key.
+
+**Step 1 — Disable the key.** Dashboard → Keys → click **Disable** on the affected key. Every agent bound to that key returns `403 PROVIDER_DISABLED` on the next call. **One click stops 100 agents.**
+
+**Step 2 — Rotate at the upstream.** Log into the provider's dashboard (OpenAI, Anthropic, Stripe, whoever). Generate a new key. Revoke the old one at the source.
+
+**Step 3 — Add the new key.** Dashboard → Keys → **Add API Key**. Paste into the secure iframe. Mintlify ingests, encrypts, stores in vault. Bind it to the same agents the old key was bound to. The old (disabled) key is preserved in the vault as a versioned record but no longer used.
+
+**Step 4 — Re-enable agents.** They were never paused — just blocked from this one provider. As soon as the new key is bound, the next call succeeds.
+
+**Total downtime per agent:** typically under 60 seconds, dominated by you typing the new key into the iframe.
+
+## Deploying a new agent version
+
+You're shipping a new code version of an agent's logic. Zero-traffic transition checklist.
+
+**Step 1 — Pause the agent.** Disable it (Tier 2). Every in-flight call completes; new calls are rejected.
+
+**Step 2 — Deploy the new code.** Push your container, restart your worker, whatever your deployment path is. The agent's environment variables don't change — `AGENTROOT_AGENT_ID`, `AGENTROOT_TOKEN`, `AGENTROOT_PROXY` carry forward.
+
+**Step 3 — Verify health from the dashboard.** Check the activity stream. Confirm the new code makes a successful test call. The first successful 200 is the green light.
+
+**Step 4 — Re-enable.** Click Activate. The agent resumes. Watch the activity stream for 60 seconds for any unexpected providers, paths, or error codes.
+
+**If something is wrong:** Disable again. Roll back. Investigate. The cost of pausing is zero — the cost of letting a bad deploy run is unbounded.
+
+## Killing and ReMinting after an incident
+
+You had a real incident. The agent did something it shouldn't have. You want to end the agent's current identity onchain (so the chain shows the termination), then bring it back under a fresh identity (so the operational state continues).
+
+**Step 1 — Kill onchain.** Dashboard → Agent → **Kill**. Sovereign mode signs from your wallet; managed mode signs on your behalf. The EAS attestation's `revocationTime` is set to the current block timestamp. Permanent. Public. Verifiable.
+
+**Step 2 — Investigate and fix.** Pull the activity log around the incident. Identify the root cause — code bug, prompt injection, missing threshold, leaked key. Fix it.
+
+**Step 3 — ReMint.** Dashboard → Killed Agents → **ReMint**. New EAS attestation under the same `agent_id` lineage. Vault keypair, API keys, bindings, audit history all carry forward.
+
+**Step 4 — Verify lineage.** The dashboard shows the `uid_lineage` chain: old (revoked) UID → new (active) UID. Onchain, both attestations are public. The chain of custody is unbroken — and unblockable.
+
+**What this gives you:** an incident response that's both auditable (the kill record is permanent and verifiable by anyone) and recoverable (the agent is back online with full operational continuity). Pinocchio gets damaged, Geppetto fixes him, ReMint brings him back. Same name. Same memory. New attestation. The chain remembers.
+
+## When to escalate
+
+Some situations exceed what a playbook can solve:
+
+- **You suspect AgentRoot itself is compromised.** Email security@agentroot.com immediately. Do not Kill from the dashboard if you can avoid it — sign the revocation directly from your wallet against the EAS contract (sovereign mode only). That bypasses our infrastructure entirely.
+- **A regulator or law-enforcement request involves your agent's activity.** Email trust@agentroot.com. Do not modify, delete, or kill the agent until you've consulted your counsel and ours.
+- **You discover a vulnerability in AgentRoot.** See [Vulnerability Disclosure Policy](vulnerability-disclosure). Email security@agentroot.com with `[URGENT]` in the subject if it allows extraction of customer key material.
+
+## Related
+
+- **[Lifecycle](lifecycle)** — the noun system: Mint, Disable, Kill, ReMint
+- **[Kill Switch](kill-switch)** — the verb system: how each tier is enforced at the proxy
+- **[Action Classes](action-classes)** — what AgentRoot governs and how to set per-class limits
+- **[Dashboard Guide](dashboard)** — every button these playbooks reference

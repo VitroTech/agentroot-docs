@@ -19,7 +19,7 @@ AgentRoot manages cryptographic identities and API credentials for autonomous AI
 | **Terms of service** | https://agentroot.app/terms |
 | **Acceptable use policy** | https://agentroot.app/acceptable-use |
 | **Data processing addendum** | Available on request — security@agentroot.com |
-| **Status page** | `[VERIFY — status page URL once provisioned]` |
+| **Status page** | [status.agentroot.app](https://status.agentroot.app) |
 
 ## How We Protect Your Data
 
@@ -48,7 +48,7 @@ See [Security → Zero-Knowledge Key Ingestion](security) for the full architect
 
 Every API call routed through the AgentRoot proxy is logged with agent identity, operator wallet, provider, timestamp, response status, and latency. Operators can query logs for their own agents from the dashboard. Kill switch events at all four tiers are recorded. EAS attestation lifecycle events are publicly verifiable on the underlying blockchain.
 
-Log retention: `[VERIFY — default 90 days, longer retention available on enterprise tier]`.
+Log retention: 90 days on the standard plan, with longer retention available on Pro, Team, and Enterprise tiers. Export to S3 or BigQuery is available on Team and above.
 
 ### Sovereign kill switches
 
@@ -78,7 +78,7 @@ We commit to publishing a post-incident report for any incident affecting custom
 
 - **Customer-supplied API keys:** Encrypted in the vault. Not in logs, not in databases, not in error traces.
 - **Agent metadata:** Agent name, purpose, connected providers, configuration parameters.
-- **Usage logs:** Per-call records (agent ID, provider, timestamp, status, cost). Default retention `[VERIFY — 90 days]`; operators can export or extend retention on enterprise tier.
+- **Usage logs:** Per-call records (agent ID, provider, timestamp, status, cost). Default retention 90 days; operators can export to long-term storage at any time or extend in-platform retention on Pro and higher tiers.
 - **Operator identity:** Ethereum wallet address; optional email address for transactional notifications.
 - **Billing data:** Handled by Stripe. AgentRoot stores only Stripe customer ID and subscription metadata — no payment card data ever touches AgentRoot's infrastructure.
 
@@ -90,7 +90,7 @@ We commit to publishing a post-incident report for any incident affecting custom
 
 ### Data residency
 
-Production data is hosted in `[VERIFY — primary region]`. EU customer data residency is available on request.
+Production data is hosted in the United States (primary region: US-East). EU customer data residency is available on Enterprise tier; reach out via security@agentroot.com to scope.
 
 ### Data deletion
 
@@ -129,4 +129,4 @@ We are happy to discuss our security posture, architecture, and roadmap with any
 
 ---
 
-*This page is reviewed quarterly and on every material change to AgentRoot's security architecture, subprocessor list, or compliance posture. Last reviewed: 2026-05-11.*
+*This page is reviewed quarterly and on every material change to AgentRoot's security architecture, subprocessor list, or compliance posture. Last reviewed: 2026-05-12.*

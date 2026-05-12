@@ -1,0 +1,78 @@
+---
+title: "Providers Overview"
+description: "The catalog of upstream services AgentRoot proxies — organized by action class."
+---
+
+Every upstream service AgentRoot supports is documented here. Each provider gets its own page with the AgentRoot-specific setup (base URL, headers, action-class defaults) plus runnable code samples in cURL, TypeScript, and Python. The dashboard's "Connect" buttons deep-link straight to the relevant page.
+
+If you're new to the catalog, read **[Conventions](conventions)** first — it covers the proxy URL pattern and headers that every provider page assumes. Then read **[Action Class Mapping](action-class-mapping)** to see how endpoints are classified into Spend / Communication / Writes / Transactions / Provisioning / Destruction.
+
+## The catalog at a glance
+
+| Category | Count | Default action class | Examples |
+|---|---|---|---|
+| **[LLMs](llms/openai)** | 10 | Spend | OpenAI, Anthropic, Google Gemini, Cohere |
+| **[Actions](actions/slack)** | 19 | Communication / Writes / Transactions | Slack, Stripe, GitHub, Notion |
+| **[Tools](tools/tavily)** | 8 | Writes | Tavily, Exa, Firecrawl, Pinecone |
+| **[Media](media/elevenlabs)** | 9 | Spend | Replicate, ElevenLabs, Stability |
+| **[Frameworks](frameworks/langchain)** | 4 | n/a (client-side) | LangChain, CrewAI, OpenClaw |
+| **[Wallets](wallets/metamask)** | 4 | n/a (identity layer) | MetaMask, Coinbase, WalletConnect |
+
+54 providers at launch. More land monthly. Missing one you need? Use the **[Custom](custom)** provider — paste a base URL, classify the routes, you're routing traffic through AgentRoot in under five minutes.
+
+## The thesis, applied to the catalog
+
+Of AgentRoot's 54 launch providers, exactly 27 — half — are **action-class**: their primary calls fall into Communication, Writes, Transactions, Provisioning, or Destruction, not Spend. The other half is split between 19 Spend providers (LLMs and media generation) and 8 client-side integrations (Frameworks and Wallets) that don't proxy traffic at all.
+
+The 27 action-class providers are where the catastrophic risk lives — the agent emailing every customer, the agent dropping the production database, the agent signing a $40k contract. Every cost-tracking proxy in this space governs the Spend half. AgentRoot governs both halves with the same primitives.
+
+Most agent-governance products are built around the Spend half. They count tokens, sum dollars, alert when the line goes up. AgentRoot is built to govern both halves with the same primitives. That's why the catalog is organized by action class first and provider name second: the category you're in tells you what governance you need *before* you pick which provider to call.
+
+See **[Action Classes](/action-classes)** for the full thesis.
+
+## How each provider page is structured
+
+Every provider page follows the same template:
+
+1. **One-line description** of what the provider does
+2. **Setup** — how to connect the provider from the dashboard
+3. **Action class coverage** — table of endpoint families with their action classes and default postures
+4. **Endpoints** — expandable accordions, one per endpoint, each with cURL / TypeScript / Python code samples
+5. **Upstream docs** — link to the provider's official API reference
+
+The top providers (OpenAI, Anthropic, Stripe, Slack, GitHub) have the full endpoint catalog inline. The rest currently ship with a representative endpoint plus a link to the upstream docs — full catalogs are landing iteratively.
+
+## Calling any provider through the proxy
+
+All provider URLs follow the same pattern:
+
+```
+https://proxy.agentroot.app/<provider>/<upstream-path>
+```
+
+For example:
+
+| Upstream call | AgentRoot proxy call |
+|---|---|
+| `POST https://api.openai.com/v1/chat/completions` | `POST https://proxy.agentroot.app/openai/v1/chat/completions` |
+| `POST https://slack.com/api/chat.postMessage` | `POST https://proxy.agentroot.app/slack/api/chat.postMessage` |
+| `POST https://api.stripe.com/v1/refunds` | `POST https://proxy.agentroot.app/stripe/v1/refunds` |
+
+You don't change your request body. You don't change the path. You only change the host and add two AgentRoot headers — see [Conventions](conventions) for the contract.
+
+## Dashboard deep-links
+
+Every provider has a stable docs URL — `docs.agentroot.app/providers/<category>/<provider>`. The AR dashboard's "Connect" buttons link straight to these pages. If you're integrating a new provider for the first time, the click path is:
+
+1. Dashboard → Connect → pick provider
+2. Dashboard opens the relevant docs page in a new tab
+3. Read the setup section, paste your key, you're live
+
+Provider URLs are stable forever. Linking from external tools, internal wikis, or your own product is safe.
+
+## Related
+
+- **[Conventions](conventions)** — the AgentRoot proxy contract (URL pattern, headers, error codes)
+- **[Action Class Mapping](action-class-mapping)** — how endpoints classify by default and how to override
+- **[Custom Provider](custom)** — for upstreams not in this catalog
+- **[Action Classes](/action-classes)** — the thesis that organizes this catalog

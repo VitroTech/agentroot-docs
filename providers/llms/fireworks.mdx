@@ -1,0 +1,78 @@
+---
+title: "Fireworks AI"
+description: "Hosted inference for Llama, Mixtral, DeepSeek, Qwen, and other open models on Fireworks' fast inference stack."
+---
+
+Fireworks AI through AgentRoot. Your agent never holds the Fireworks API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Fireworks AI
+2. Paste your Fireworks API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/fireworks`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Fireworks endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Fireworks through AgentRoot
+
+Representative call — `POST /inference/v1/chat/completions`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/fireworks/inference/v1/chat/completions' \
+  -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+  -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "model": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+  "messages": [{"role": "user", "content": "Hello"}]
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+  provider: 'fireworks',
+  path: '/inference/v1/chat/completions',
+  method: 'POST',
+  body: {
+    model: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
+    messages: [{ role: 'user', content: 'Hello' }],
+  },
+});
+```
+
+```python Python
+import os, requests
+requests.post(
+  "https://proxy.agentroot.app/fireworks/inference/v1/chat/completions",
+  headers={
+    "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+    "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+  },
+  json={
+    "model": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+    "messages": [{"role": "user", "content": "Hello"}],
+  },
+)
+```
+</CodeGroup>
+
+The Fireworks API is OpenAI-compatible — the OpenAI client SDK works against `proxy.agentroot.app/fireworks/inference/v1` with the same drop-in pattern documented on the [OpenAI provider page](openai).
+
+## Full endpoint catalog
+
+The complete Fireworks endpoint catalog is callable through the AgentRoot proxy using the pattern above — chat completions, completions, embeddings, fine-tuning, image generation. Substitute the path from the upstream's API reference.
+
+**Upstream reference:** [Fireworks AI API documentation](https://docs.fireworks.ai/api-reference/introduction)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[OpenAI](openai)** — same OpenAI-compatible client pattern works for Fireworks
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

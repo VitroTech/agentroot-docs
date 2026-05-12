@@ -1,0 +1,109 @@
+---
+title: "Custom Provider"
+description: "Proxy any HTTP API through AgentRoot — self-hosted services, internal microservices, or upstreams not in the catalog."
+---
+
+The Custom provider lets you route any HTTPS API through AgentRoot — your own internal services, a SaaS that's not in our catalog yet, or a niche upstream you don't want to wait for us to add. You get the same kill switch, the same audit trail, the same action-class governance.
+
+## When to use Custom
+
+- **Your internal microservice.** You're proxying calls from an agent to your own backend, and you want the kill switch and audit log without exposing internal credentials to the agent.
+- **An upstream not in our catalog.** We support 51 providers at launch. If you're integrating something else, the Custom provider is the bridge until we add native support. (Tell us at security@agentroot.com — popular custom providers become native ones.)
+- **A custom proxy in front of a native provider.** You're routing OpenAI calls through your own internal proxy that does additional logging, and you want AgentRoot to govern that proxy rather than OpenAI directly.
+
+## Setup
+
+1. Dashboard → **Connect** → **Custom**
+2. **Base URL** — the upstream's base, including protocol. Example: `https://api.your-internal-service.com`
+3. **Authentication header pattern** — pick from a dropdown (`Authorization: Bearer <key>`, `X-API-Key: <key>`, `Authorization: Basic <base64>`, or a custom header name)
+4. **Paste your API key** into the secure iframe — the key is encrypted at the boundary and stored in the vault
+5. **Label** the binding — e.g., "Internal Refund Service (prod)"
+6. **Bind to one or more agents**
+
+The dashboard generates a provider slug (`custom-internal-refund-service-prod`) that you'll use in the proxy URL. Slugs are stable and dashboard-renameable.
+
+## Calling a Custom provider
+
+```
+https://proxy.agentroot.app/<custom-slug>/<upstream-path>
+```
+
+<CodeGroup>
+```bash cURL
+curl https://proxy.agentroot.app/custom-internal-refund-service-prod/v1/refunds \
+  -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+  -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{"chargeId": "ch_abc", "amount": 500}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+  provider: 'custom-internal-refund-service-prod',
+  path: '/v1/refunds',
+  method: 'POST',
+  body: { chargeId: 'ch_abc', amount: 500 },
+});
+```
+
+```python Python
+import requests, os
+requests.post(
+  "https://proxy.agentroot.app/custom-internal-refund-service-prod/v1/refunds",
+  headers={
+    "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+    "X-AgentRoot-ID": os.environ['AGENTROOT_AGENT_ID'],
+  },
+  json={"chargeId": "ch_abc", "amount": 500},
+)
+```
+</CodeGroup>
+
+The proxy injects your stored API key into the configured auth header before forwarding to `https://api.your-internal-service.com/v1/refunds`. Your agent never holds the credential.
+
+## Classifying Custom routes
+
+Custom routes start at `unknown` and resolve to **Writes** as the conservative default. Every Custom route should be classified explicitly — leaving routes as default means they're governed by the Writes posture, which may be too loose (a route that should be Destruction-classified) or too tight (a route that should be Spend).
+
+Two paths to classify:
+
+**Dashboard (recommended)** — once a route has been called at least once, the dashboard surfaces it in the agent's bindings view. Click the route, pick a class from the dropdown, save. Effective immediately for future calls.
+
+**Per-request header** — for routes where classification depends on request content rather than path, send `X-AgentRoot-Class-Override: <class>` on each call:
+
+```http
+POST https://proxy.agentroot.app/custom-internal-svc/v1/dispatch
+X-AgentRoot-Class-Override: destruction
+```
+
+The override is per-call and is itself audited. Per-request overrides cannot relax a route's standing class to something more permissive — only tighten it. See [Action Class Mapping → Overriding classifications](action-class-mapping#overriding-classifications) for the full asymmetry rules.
+
+## Authentication patterns the dashboard supports
+
+| Pattern | Header sent to upstream | Use when |
+|---|---|---|
+| Bearer token | `Authorization: Bearer <key>` | Most modern APIs (OpenAI-style, JWT-based) |
+| API key header | `X-API-Key: <key>` | Common pattern (AWS, many SaaS) |
+| Custom header | `<your-header>: <key>` | Anything else — name the header in the dashboard |
+| Basic auth | `Authorization: Basic <base64>` | Older APIs |
+| HMAC signed | (computed per-request) | Banks, payment processors — contact us for setup |
+
+The vault stores the *key value*, not the header itself. The proxy assembles the header at request time.
+
+## Limits and quotas
+
+Custom providers have the same per-plan limits as preset providers — see the [Dashboard → Plans and Billing](/dashboard#plans-and-billing) table. The number of distinct Custom providers you can connect is part of the "API slots" limit on your plan.
+
+## What's not supported on Custom (yet)
+
+- **WebSocket upstreams.** The proxy is HTTPS-only. WebSocket support is on the roadmap.
+- **mTLS upstreams.** Mutual TLS authentication on the upstream side requires Enterprise plan and a manual setup with our team.
+- **OAuth flows.** The vault stores API keys, not OAuth tokens with rotation. If your upstream requires OAuth, contact us — we can set up the provider with managed OAuth in the dashboard for enterprise customers.
+- **Streaming responses without `Transfer-Encoding: chunked`.** The proxy passes through standard SSE and chunked streaming; bespoke long-polling implementations may need adjustment.
+
+## Related
+
+- **[Conventions](conventions)** — the URL pattern and headers (same for Custom)
+- **[Action Class Mapping](action-class-mapping)** — how to classify Custom routes
+- **[Overview](overview)** — the full preset catalog
+- **[Operator Playbooks](/playbooks)** — incident response for any provider, including Custom

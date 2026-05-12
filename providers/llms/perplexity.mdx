@@ -1,0 +1,91 @@
+---
+title: "Perplexity"
+description: "Online LLMs with built-in web search — Sonar Small, Sonar Large, Sonar Huge."
+---
+
+Perplexity through AgentRoot. Your agent never holds the Perplexity API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Perplexity
+2. Paste your Perplexity API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/perplexity`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Perplexity endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Perplexity through AgentRoot
+
+Representative call — `POST /chat/completions`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/perplexity/chat/completions' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "model": "llama-3.1-sonar-large-128k-online",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What's new in AI today?"
+    }
+  ]
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'perplexity',
+      path: '/chat/completions',
+      method: 'POST',,
+      body: {
+  "model": "llama-3.1-sonar-large-128k-online",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What's new in AI today?"
+    }
+  ]
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/perplexity/chat/completions",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "model": "llama-3.1-sonar-large-128k-online",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What's new in AI today?"
+    }
+  ]
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Perplexity endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Perplexity API documentation](https://docs.perplexity.ai/reference/post_chat_completions)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Perplexity routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

@@ -1,0 +1,79 @@
+---
+title: "Plaid"
+description: "Banking data, account verification, payment initiation via Plaid."
+---
+
+Plaid through AgentRoot. Your agent never holds the Plaid API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Plaid
+2. Paste your Plaid API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/plaid`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Plaid endpoints classify as **Transactions** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Plaid through AgentRoot
+
+Representative call — `POST /transactions/get`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/plaid/transactions/get' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "access_token": "<token>",
+  "start_date": "2026-01-01",
+  "end_date": "2026-05-12"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'plaid',
+      path: '/transactions/get',
+      method: 'POST',,
+      body: {
+  "access_token": "<token>",
+  "start_date": "2026-01-01",
+  "end_date": "2026-05-12"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/plaid/transactions/get",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "access_token": "<token>",
+  "start_date": "2026-01-01",
+  "end_date": "2026-05-12"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Plaid endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Plaid API documentation](https://plaid.com/docs/api/)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Plaid routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

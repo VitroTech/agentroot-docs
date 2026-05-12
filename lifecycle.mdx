@@ -9,14 +9,20 @@ If you only learn one thing from these docs, learn the lifecycle vocabulary. It'
 
 ## Agents have four states
 
-```
-              Mint                 Disable
-            ────────►            ────────►
-   nothing            Active                Paused
-            ◄────────            ◄────────
-              Kill                 Activate
-              ▼
-            Killed ──── ReMint ──► Active (new attestation, same agent_id)
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Active : Mint
+    Active --> Paused : Disable<br/>(Tier 2)
+    Paused --> Active : Activate
+    Active --> Killed : Kill<br/>(Tier 3, onchain)
+    Paused --> Killed : Kill<br/>(Tier 3, onchain)
+    Killed --> Active : ReMint<br/>(new attestation,<br/>same agent_id)
+
+    note right of Killed
+        Permanent onchain.
+        Vault keys preserved.
+    end note
 ```
 
 ### Mint
@@ -67,6 +73,8 @@ If you only learn one thing from these docs, learn the lifecycle vocabulary. It'
 
 **Use it for:** post-incident recovery. Kill the agent in anger; ReMint it after you've fixed the bug.
 
+This is the redemption arc. Pinocchio gets damaged. Geppetto catches him, fixes the bug, and ReMints. The wooden boy is back — same name, same vault keys, same memory of every API connection you wired up — but the old attestation stays revoked forever as proof that something happened, and the new one proves you were the one to bring him back. The chain of custody is unbroken across incarnations.
+
 > "Agents have a half-life. Karma is forever."
 
 The kill record is onchain. The new attestation is onchain. Both are publicly verifiable. The chain of custody is unbroken — and unblockable.
@@ -75,10 +83,14 @@ The kill record is onchain. The new attestation is onchain. Both are publicly ve
 
 API keys (the credentials your agent uses to talk to OpenAI, Stripe, Slack, etc.) have a separate, simpler lifecycle.
 
-```
-   Activate      Disable      Activate      Delete
-  ─────────►  ◄─────────  ─────────► ────────►
-        Active            Disabled            (gone)
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Active : Add key
+    Active --> Disabled : Disable
+    Disabled --> Active : Activate
+    Active --> [*] : Delete
+    Disabled --> [*] : Delete
 ```
 
 ### Activate

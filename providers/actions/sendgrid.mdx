@@ -1,0 +1,127 @@
+---
+title: "SendGrid"
+description: "Transactional and marketing email via SendGrid."
+---
+
+SendGrid through AgentRoot. Your agent never holds the SendGrid API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → SendGrid
+2. Paste your SendGrid API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/sendgrid`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+SendGrid endpoints classify as **Communication** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling SendGrid through AgentRoot
+
+Representative call — `POST /v3/mail/send`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/sendgrid/v3/mail/send' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "personalizations": [
+    {
+      "to": [
+        {
+          "email": "user@example.com"
+        }
+      ]
+    }
+  ],
+  "from": {
+    "email": "agent@example.com"
+  },
+  "subject": "Hello",
+  "content": [
+    {
+      "type": "text/plain",
+      "value": "hello from AgentRoot"
+    }
+  ]
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'sendgrid',
+      path: '/v3/mail/send',
+      method: 'POST',,
+      body: {
+  "personalizations": [
+    {
+      "to": [
+        {
+          "email": "user@example.com"
+        }
+      ]
+    }
+  ],
+  "from": {
+    "email": "agent@example.com"
+  },
+  "subject": "Hello",
+  "content": [
+    {
+      "type": "text/plain",
+      "value": "hello from AgentRoot"
+    }
+  ]
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/sendgrid/v3/mail/send",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "personalizations": [
+    {
+      "to": [
+        {
+          "email": "user@example.com"
+        }
+      ]
+    }
+  ],
+  "from": {
+    "email": "agent@example.com"
+  },
+  "subject": "Hello",
+  "content": [
+    {
+      "type": "text/plain",
+      "value": "hello from AgentRoot"
+    }
+  ]
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete SendGrid endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [SendGrid API documentation](https://www.twilio.com/docs/sendgrid/api-reference)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how SendGrid routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

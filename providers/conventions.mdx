@@ -1,0 +1,113 @@
+---
+title: "Conventions"
+description: "The proxy URL pattern, headers, error codes, and streaming behavior every provider page assumes."
+---
+
+This page is the single canonical source for the AgentRoot proxy contract. Every provider page in this catalog assumes you've read this once. The contract does not vary by provider — only the path after the `/<provider>/` segment changes.
+
+## URL pattern
+
+```
+https://proxy.agentroot.app/<provider>/<upstream-path>
+```
+
+`<provider>` is the lowercase provider identifier from the catalog (`openai`, `anthropic`, `slack`, `stripe`, `github`, etc.). The full provider identifier list is in the dashboard and in [Overview](overview).
+
+`<upstream-path>` is the exact path the provider's own API documentation specifies. AgentRoot does not rewrite paths. If OpenAI documents `POST /v1/chat/completions`, you call `POST https://proxy.agentroot.app/openai/v1/chat/completions`. Path parameters, query strings, and body schemas all pass through unchanged.
+
+## Headers
+
+Three required headers on every request:
+
+| Header | Value | Notes |
+|---|---|---|
+| `Authorization` | `Bearer <AGENTROOT_TOKEN>` | The session token from your agent's environment — *not* the upstream API key |
+| `X-AgentRoot-ID` | `<AGENTROOT_AGENT_ID>` | Your agent's EAS attestation UID |
+| `Content-Type` | usually `application/json` | Whatever the upstream expects |
+
+Optional but recommended:
+
+| Header | Value | Use |
+|---|---|---|
+| `X-AgentRoot-Provider` | `<provider>` | Redundant with the URL path; set it for clarity in audit logs |
+| `X-AgentRoot-Idempotency-Key` | UUID | For replay-safe retries on Writes / Transactions calls |
+
+Headers the upstream would normally require for auth (e.g. OpenAI's `Authorization: Bearer sk-...`, Stripe's `Authorization: Bearer sk_live_...`, Anthropic's `x-api-key`) are *not* sent by your agent. The proxy injects them from the vault.
+
+## Action class headers
+
+Every response from the proxy includes these headers, useful for runtime logging and observability:
+
+| Header | Meaning |
+|---|---|
+| `X-AgentRoot-Class` | The action class this call was classified into (`spend`, `communication`, `writes`, `transactions`, `provisioning`, `destruction`) |
+| `X-AgentRoot-Cost-USD` | Estimated upstream cost in USD (when known) |
+| `X-AgentRoot-Latency-MS` | Proxy + upstream round-trip time |
+| `X-AgentRoot-Request-ID` | Correlation ID — quote this when filing support tickets |
+
+## Error codes
+
+When the proxy rejects a request, the response is a JSON object with a consistent shape:
+
+```json
+{
+  "error": {
+    "code": "AGENT_KILLED",
+    "message": "Agent has been paused by operator",
+    "tier": 2,
+    "retryable": false,
+    "requestId": "req_01HZ..."
+  }
+}
+```
+
+The full code catalog:
+
+| HTTP | Code | Meaning | Retryable |
+|---|---|---|---|
+| 401 | `TOKEN_EXPIRED` | Session token TTL elapsed; rotate from dashboard | yes (after refresh) |
+| 401 | `TOKEN_REVOKED` | Operator killed the token | no |
+| 401 | `TOKEN_INVALID` | Malformed or unrecognized token | no |
+| 403 | `AGENT_KILLED` | Tier 2 — entire agent paused | no |
+| 403 | `PROVIDER_DISABLED` | Tier 1 — this binding off | no |
+| 403 | `ATTESTATION_REVOKED` | Tier 3 — onchain kill, permanent | no |
+| 403 | `CLASS_DENIED` | Per-class threshold tripped or class is deny-by-default (Destruction) | no |
+| 429 | `RATE_LIMITED` | Auto-kill threshold breached | yes (after `retryAfter`) |
+| 502 | `UPSTREAM_ERROR` | The upstream API returned an error; forwarded as-is | depends on upstream |
+| 503 | `VAULT_UNAVAILABLE` | AgentRoot vault unreachable; fail-closed | yes (after status page resolves) |
+| 504 | `UPSTREAM_TIMEOUT` | The upstream API exceeded its timeout window | yes |
+
+For SDK error handling patterns, see [SDK → Error handling](/sdk).
+
+## Streaming
+
+The proxy is transparent to streaming. If the upstream supports SSE (Server-Sent Events) or chunked transfer encoding — OpenAI chat completions, Anthropic messages, Replicate predictions, Deepgram transcriptions — set the upstream's streaming parameter in your request body (`stream: true` for OpenAI; `stream: true` for Anthropic; etc.) and consume the response as you would directly from the upstream.
+
+The proxy does *not* buffer streaming responses. Latency overhead at the edge is under 100ms for the connection handshake; from there, byte-for-byte the upstream's stream lands at your agent.
+
+## Idempotency
+
+For Writes, Transactions, and any other class where a duplicate request could cause damage, send the `X-AgentRoot-Idempotency-Key` header with a unique identifier per logical operation. The proxy deduplicates: if the same idempotency key arrives within the configured window (default 24h), the proxy returns the cached response from the original call without re-invoking the upstream.
+
+This is independent of the upstream's own idempotency mechanism. Stripe, for example, has its own `Idempotency-Key` header; you can use both — the proxy's key prevents duplicate calls *to* Stripe, and Stripe's key prevents duplicate processing *by* Stripe.
+
+## Multi-region
+
+The proxy runs at Cloudflare's edge — your request lands at the nearest PoP, the policy engine validates in-region, then the upstream call is made from the AgentRoot region nearest to the upstream's primary region. Round-trip latency is dominated by the upstream, not the proxy.
+
+For latency-sensitive applications, the proxy adds 30–80ms over a direct upstream call. The action-class governance, vault injection, and kill-switch checks all happen in that window.
+
+## What the proxy does *not* do
+
+- **Path rewriting** — the proxy doesn't modify the URL path. What you send is what the upstream receives.
+- **Body rewriting** — the proxy doesn't modify request bodies. Streaming responses pass through byte-for-byte.
+- **Schema enforcement** — the proxy doesn't validate that your request body matches the upstream's schema. Upstream error responses are forwarded as `502 UPSTREAM_ERROR`.
+- **Response caching** — the proxy doesn't cache upstream responses (except for idempotency-key deduplication, above).
+- **Cost calculation by guess** — the `X-AgentRoot-Cost-USD` header is present only when AgentRoot has a reliable cost model for the upstream. LLM token pricing is included; Stripe transaction fees are not.
+
+## Related
+
+- **[Overview](overview)** — the catalog landing page
+- **[Action Class Mapping](action-class-mapping)** — how endpoints classify
+- **[SDK Reference](/sdk)** — the TypeScript client that wraps this contract
+- **[API Reference](/api-reference)** — the raw HTTP endpoints

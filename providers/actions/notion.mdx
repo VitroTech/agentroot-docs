@@ -1,0 +1,112 @@
+---
+title: "Notion"
+description: "Create pages, query databases, append blocks via the Notion API."
+---
+
+Notion through AgentRoot. Your agent never holds the Notion API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Notion
+2. Paste your Notion API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/notion`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Notion endpoints classify as **Writes** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Notion through AgentRoot
+
+Representative call — `POST /v1/pages`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/notion/v1/pages' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "parent": {
+    "database_id": "<id>"
+  },
+  "properties": {
+    "Name": {
+      "title": [
+        {
+          "text": {
+            "content": "New page"
+          }
+        }
+      ]
+    }
+  }
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'notion',
+      path: '/v1/pages',
+      method: 'POST',,
+      body: {
+  "parent": {
+    "database_id": "<id>"
+  },
+  "properties": {
+    "Name": {
+      "title": [
+        {
+          "text": {
+            "content": "New page"
+          }
+        }
+      ]
+    }
+  }
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/notion/v1/pages",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "parent": {
+    "database_id": "<id>"
+  },
+  "properties": {
+    "Name": {
+      "title": [
+        {
+          "text": {
+            "content": "New page"
+          }
+        }
+      ]
+    }
+  }
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Notion endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Notion API documentation](https://developers.notion.com/reference/intro)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Notion routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

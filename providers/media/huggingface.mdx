@@ -1,0 +1,73 @@
+---
+title: "Hugging Face"
+description: "Inference for any model on the Hugging Face Hub."
+---
+
+Hugging Face through AgentRoot. Your agent never holds the Hugging Face API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Hugging Face
+2. Paste your Hugging Face API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/huggingface`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Hugging Face endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Hugging Face through AgentRoot
+
+Representative call — `POST /models/{model}`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/huggingface/models/{model}' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "inputs": "Hello"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'huggingface',
+      path: '/models/{model}',
+      method: 'POST',,
+      body: {
+  "inputs": "Hello"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/huggingface/models/{model}",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "inputs": "Hello"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Hugging Face endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Hugging Face API documentation](https://huggingface.co/docs/api-inference/index)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Hugging Face routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

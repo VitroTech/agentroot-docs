@@ -1,0 +1,73 @@
+---
+title: "Linear"
+description: "Create issues, transition statuses, manage workflows in Linear."
+---
+
+Linear through AgentRoot. Your agent never holds the Linear API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Linear
+2. Paste your Linear API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/linear`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Linear endpoints classify as **Writes** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Linear through AgentRoot
+
+Representative call — `POST /graphql`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/linear/graphql' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "query": "mutation { issueCreate(input: { title: \"From the agent\", teamId: \"<id>\" }) { success } }"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'linear',
+      path: '/graphql',
+      method: 'POST',,
+      body: {
+  "query": "mutation { issueCreate(input: { title: \"From the agent\", teamId: \"<id>\" }) { success } }"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/linear/graphql",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "query": "mutation { issueCreate(input: { title: \"From the agent\", teamId: \"<id>\" }) { success } }"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Linear endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Linear API documentation](https://developers.linear.app/docs/graphql/working-with-the-graphql-api)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Linear routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

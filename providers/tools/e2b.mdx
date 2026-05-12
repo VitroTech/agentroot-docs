@@ -1,0 +1,73 @@
+---
+title: "E2B"
+description: "Secure cloud sandboxes for running agent-generated code."
+---
+
+E2B through AgentRoot. Your agent never holds the E2B API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → E2B
+2. Paste your E2B API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/e2b`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+E2B endpoints classify as **Provisioning** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling E2B through AgentRoot
+
+Representative call — `POST /sandboxes`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/e2b/sandboxes' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "templateID": "base"
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'e2b',
+      path: '/sandboxes',
+      method: 'POST',,
+      body: {
+  "templateID": "base"
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/e2b/sandboxes",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "templateID": "base"
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete E2B endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [E2B API documentation](https://e2b.dev/docs/api-reference)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how E2B routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog

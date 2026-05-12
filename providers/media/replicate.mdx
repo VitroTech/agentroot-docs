@@ -1,0 +1,82 @@
+---
+title: "Replicate"
+description: "Run inference on hosted ML models — image, video, audio, custom."
+---
+
+Replicate through AgentRoot. Your agent never holds the Replicate API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+
+## Setup
+
+1. Dashboard → **Connect** → Replicate
+2. Paste your Replicate API key into the secure iframe
+3. Bind the key to one or more agents
+4. Point your code at `https://proxy.agentroot.app/replicate`
+
+For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
+
+## Action class
+
+Replicate endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
+
+## Calling Replicate through AgentRoot
+
+Representative call — `POST /v1/predictions`:
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://proxy.agentroot.app/replicate/v1/predictions' \
+      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
+      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
+      -H "Content-Type: application/json" \
+      -d '{
+  "version": "<model_version>",
+  "input": {
+    "prompt": "a wooden puppet"
+  }
+}'
+```
+
+```typescript TypeScript
+await ar.proxy({
+      provider: 'replicate',
+      path: '/v1/predictions',
+      method: 'POST',,
+      body: {
+  "version": "<model_version>",
+  "input": {
+    "prompt": "a wooden puppet"
+  }
+},
+    });
+```
+
+```python Python
+import os, requests
+requests.post(
+      "https://proxy.agentroot.app/replicate/v1/predictions",
+      headers={
+        "Authorization": f"Bearer {os.environ['AGENTROOT_TOKEN']}",
+        "X-AgentRoot-ID": os.environ["AGENTROOT_AGENT_ID"],
+      },
+      json={
+  "version": "<model_version>",
+  "input": {
+    "prompt": "a wooden puppet"
+  }
+},
+    )
+```
+</CodeGroup>
+
+## Full endpoint catalog
+
+The complete Replicate endpoint catalog is callable through the AgentRoot proxy using the pattern above — substitute the path from the upstream's API reference. Full per-endpoint accordions with action-class annotations are landing iteratively in this docs site.
+
+**Upstream reference:** [Replicate API documentation](https://replicate.com/docs/reference/http)
+
+## Related
+
+- **[Conventions](../conventions)** — the proxy contract
+- **[Action Class Mapping](../action-class-mapping)** — how Replicate routes classify
+- **[SDK Reference](/sdk)** — the TypeScript SDK
+- **[Overview](../overview)** — the full provider catalog
