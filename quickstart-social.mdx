@@ -1,0 +1,150 @@
+---
+title: "Quickstart: Social Login"
+description: "Sign in with Google or GitHub, register an agent, and make your first proxied call in under 5 minutes."
+---
+
+# Quickstart: Social Login
+
+Sign in with Google or GitHub, register an agent, add an API key, and make your first proxied API call. No wallet needed. Total time: about 5 minutes.
+
+## Prerequisites
+
+- A Google or GitHub account
+- An API key for at least one provider (e.g., OpenAI, Anthropic)
+
+## Step 1: Sign In
+
+Go to [ux.agentroot.app](https://ux.agentroot.app) and click **Sign in with Google** or **Sign in with GitHub**. Authorize the connection. That's it — you're in.
+
+Behind the scenes, AgentRoot's managed attester (`agentroot.eth`) creates onchain attestations on your behalf. You get the same EAS identity, proxy, and kill switch as wallet users — without needing to manage a wallet.
+
+> **Want sovereign onchain control?** If you need Tier 3 — where you revoke an agent's attestation directly from your wallet, independent of AgentRoot — sign up with SIWE instead. See the [SIWE Quickstart](quickstart-siwe). We're building a migration path so social login users can upgrade to sovereign wallet control without re-registering their agents.
+
+## Step 2: Register an Agent
+
+Click **New Agent** in the dashboard. Provide:
+
+- **Agent Name** — a human-readable label (e.g., "research-bot-prod")
+- **Agent Description** — what this agent does (optional, stored onchain)
+
+Click **Create**. Two things happen automatically:
+
+1. **Vault generates a P-256 keypair** — the private key stays in Vault and is never exported. The public key is included in the onchain attestation.
+2. **An EAS attestation is created on Base** — this is your agent's onchain identity. Immutable and publicly verifiable. No wallet interaction needed — the managed attester handles it.
+
+No MetaMask popup. No transaction signing. No gas fees. The managed attester (`agentroot.eth`) handles the onchain work in the background.
+
+## Step 3: Follow the Dashboard Wizard
+
+After registration, the dashboard wizard guides you through credentials, SDK init, API key ingestion, and your first proxied call — all inline. Each step confirms success before moving to the next.
+
+### Download Your Agent Credentials
+
+The wizard shows your agent's credentials:
+
+```
+AGENTROOT_AGENT_ID=0x7a3f...  (your agent's unique ID — the EAS attestation UID)
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx  (session token, 24-hour TTL)
+AGENTROOT_PROXY=https://proxy.agentroot.app
+```
+
+Download or copy these values. You'll add them to your agent's environment.
+
+The session token is the only secret here, and it expires in 24 hours. If it's compromised, revoke it from the dashboard and a new one is issued automatically.
+
+### Configure Your Agent
+
+Copy the three environment variables into your agent's `.env` file (the wizard has a "Copy All" button):
+
+```bash
+AGENTROOT_AGENT_ID=0x7a3f...
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx
+AGENTROOT_PROXY=https://proxy.agentroot.app
+```
+
+### Initialize the SDK
+
+The wizard prompts you to run the SDK init command and polls for confirmation:
+
+```bash
+npx @agentroot/sdk init
+```
+
+The dashboard badge transitions from "Awaiting Init" to "Bound" once the init completes. This binds the agent to your machine — stolen credentials alone won't work without it.
+
+### Add an API Key
+
+The next wizard step presents the API key ingestion iframe inline.
+
+1. Select a **provider** from the dropdown (e.g., OpenAI, Anthropic, Mistral)
+2. Paste your **API key**
+3. Add an optional **label** (e.g., "Production GPT-4o")
+4. Click **Save**
+
+Your API key is encrypted immediately and stored in Vault. The dashboard never sees the plaintext key after submission. The proxy will inject this key into outbound requests when your agent calls this provider.
+
+### Make Your First Proxied Call
+
+The wizard's final step shows a ready-to-run test call with tabs for SDK, cURL, and Python:
+
+```typescript
+const response = await ar.proxy({
+  provider: 'openai',
+  path: '/v1/chat/completions',
+  method: 'POST',
+  body: {
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Hello from AgentRoot!' }],
+  },
+});
+
+console.log(response.data);
+```
+
+The proxy handles everything: validates your session token, injects your OpenAI API key, forwards the request, logs the call, and returns the response. Your agent code never sees the API key.
+
+### Alternative: Use cURL
+
+If you're not using the SDK, call the proxy directly:
+
+```bash
+curl -X POST https://proxy.agentroot.app/v1/chat/completions \
+  -H "Authorization: Bearer art_live_xxxxxxxxxxxx" \
+  -H "X-AgentRoot-ID: 0x7a3f..." \
+  -H "X-AgentRoot-Provider: openai" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello from AgentRoot!"}]
+  }'
+```
+
+## What Just Happened
+
+```
+Your agent → proxy.agentroot.app
+  → Token validated against Vault ✓
+  → Kill switch checked (all clear) ✓
+  → API key retrieved from Vault ✓
+  → Key injected into request ✓
+  → Request forwarded to api.openai.com ✓
+  → Response returned to your agent ✓
+  → Call logged (agent, provider, status, latency) ✓
+```
+
+Your agent made an API call without ever holding the API key. The call is logged in your dashboard. The API key stays in Vault.
+
+## Upgrading to Sovereign Wallet Control
+
+Social login gives you full access to Tiers 1 and 2 of the kill switch (toggle APIs off, pause agents) from the dashboard. AgentRoot can also revoke attestations on your behalf from the dashboard (managed Tier 3).
+
+For sovereign Tier 3 control — where you revoke an agent's onchain EAS attestation directly from your own wallet, independent of AgentRoot — you need an Ethereum wallet. If you need this today, sign up with SIWE: [SIWE Quickstart](quickstart-siwe).
+
+**Migration from social to SIWE is in development.** When it ships, you'll be able to connect a wallet and transfer attestation authority to it without re-registering your agents. Your agent IDs, API keys, and proxy configuration will carry over.
+
+## Next Steps
+
+- [Dashboard Guide](dashboard) — monitor activity, manage keys, use the kill switch
+- [SDK Reference](sdk) — full SDK API, session token refresh, error handling
+- [Kill Switch](kill-switch) — understand the four tiers of revocation
+- [Architecture](architecture) — how the proxy, Vault, and EAS work together

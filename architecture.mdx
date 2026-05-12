@@ -1,0 +1,131 @@
+---
+title: "Architecture"
+description: "How AgentRoot secures agent API access with onchain identity, proxy isolation, and encrypted key custody."
+---
+
+# Architecture
+
+AgentRoot uses a **two-plane isolation model**. The control plane (dashboard) and the agent plane (runtime) never touch. An agent knows only its proxy URL, its session token, and its agent ID. It has no access to API keys, private keys, or the dashboard.
+
+## The Security Model
+
+```
+CONTROL PLANE
+  Dashboard --> Policy Engine --> Encrypted Vault
+  (operator)   (authorization)   (key custody)
+
+AGENT PLANE
+  Agent Runtime --> API Proxy --> Upstream APIs
+  (no keys)        (edge)        (OpenAI, etc.)
+
+IDENTITY LAYER
+  EAS on Base — immutable onchain attestation
+  Agent public key + operator wallet + revocation status
+```
+
+## Core Components
+
+### Dashboard
+
+The operator's control plane. Register agents, add API keys, monitor activity, and trigger kill switches. The dashboard is untrusted for key custody — it can submit API keys for encrypted storage but never retrieves plaintext keys.
+
+### Policy Engine
+
+The authorization layer. Every proxy request passes through the policy engine, which validates the agent's session, checks kill switch state, verifies onchain attestation status, and resolves the correct API key. If any check fails, the request is rejected. This is the single point of authorization in the system.
+
+### Encrypted Vault
+
+All secrets are stored in an encrypted, access-controlled vault: API keys (encrypted at rest, versioned), agent keypairs (private key never exported), and session tokens. The vault is fail-closed — if it's unavailable, all requests are rejected rather than falling back to an insecure mode.
+
+### API Proxy
+
+A globally distributed edge proxy that sits between your agent and upstream APIs. It validates the agent's session, injects the correct API key from the vault, forwards the request, logs everything, and returns the response. The proxy temporarily holds an API key in-process for one request, then discards it. It does not store keys.
+
+### EAS on Base
+
+The onchain identity layer. Each agent has an immutable attestation on Base (Ethereum L2) containing its public key, linked to the operator's wallet address. The attestation can be verified by anyone and revoked only by the operator.
+
+## How a Request Flows
+
+Every API call follows the same path:
+
+```
+1. Agent sends request to the proxy
+   (with session token + agent ID + target provider)
+
+2. Policy engine validates the session
+   → Invalid or expired → rejected
+
+3. Policy engine checks kill switch state
+   → Any tier active → rejected
+
+4. Policy engine checks onchain attestation status
+   → Revoked → rejected
+
+5. Policy engine retrieves the API key from the vault
+
+6. Proxy injects key into the outbound request
+
+7. Request forwarded to upstream API
+
+8. Response returned to agent
+
+9. Key discarded from memory
+
+10. Call metadata logged (agent, provider, status, latency)
+```
+
+## Key Custody
+
+The Agent Root Secret Key (ARSK) is a P-256 keypair generated inside the encrypted vault during agent registration. This keypair — not the EAS attestation UID — is the true anchor of the agent's identity. The attestation is the onchain proof; the keypair is the identity itself.
+
+**The private key never leaves the vault.** Not for export, not for backup, not for any reason. The public key is recorded in the EAS attestation on Base, creating a verifiable link between the onchain identity and the vault-custodied private key.
+
+This separation is what makes the kill-and-remint cycle possible. If you revoke an agent's EAS attestation (Tier 3), the keypair and all configuration remain safely in Vault. You can create a new attestation with the same keypair and agent data — the agent is reborn with a new onchain identity, same keys, same API connections, full history intact. The revocation record stays onchain as permanent proof the agent was stopped. The new attestation proves it was restarted under your authority.
+
+Instead of holding the private key, the agent receives a short-lived session token with a 24-hour TTL. If a session token is compromised, the damage is bounded: the attacker has at most 24 hours of access. You can revoke the token immediately from the dashboard (Tier 2), or revoke the agent's EAS attestation on Base directly from your wallet (Tier 3) — a permanent, sovereign kill that works independently of AgentRoot. The underlying identity is unaffected.
+
+## Zero-Knowledge Key Ingestion
+
+When an operator adds an API key through the dashboard, the key is entered in a secure, isolated component on a separate origin. The key is encrypted immediately and stored in the vault. The dashboard application never sees the plaintext key. Even if the dashboard is compromised, API keys remain safe.
+
+## Four Kill Switch Tiers
+
+| Tier | Scope | Speed | How It Works |
+|------|-------|-------|-------------|
+| **Tier 1** | Single API | Instant | Toggle one provider off. Proxy rejects calls to that API. |
+| **Tier 2** | Entire agent | Instant | Pause the agent. Proxy rejects all calls. |
+| **Tier 3** | Everything (onchain) | ~30 seconds | Revoke the EAS attestation from your wallet. Permanent, sovereign, independent of AgentRoot. |
+| **Auto-Kill** | Threshold-based | Instant | Usage limits trigger automatic pause. |
+
+For full details on each tier, see the [Kill Switch guide](kill-switch).
+
+## Fail-Closed Design
+
+AgentRoot fails closed at every layer:
+
+- **Vault unavailable** → all requests rejected (no cached keys, no fallback)
+- **Session invalid** → request rejected before any key resolution
+- **Kill switch active** → request rejected before any upstream call
+- **Attestation revoked** → request rejected permanently
+
+The system never degrades to an insecure mode. Downtime is always preferred over unauthorized access.
+
+## What the Agent Knows
+
+An agent's environment contains exactly three values:
+
+```
+AGENTROOT_AGENT_ID=0x7a3f...
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx
+AGENTROOT_PROXY=https://proxy.agentroot.app
+```
+
+No API keys. No private keys. No vault credentials. No dashboard access. If the agent's environment is fully compromised, the attacker gets a session token that expires in 24 hours — and you can kill it immediately from the dashboard, or revoke the agent's onchain EAS attestation directly from your wallet. The onchain revocation is permanent, sovereign, and works even if AgentRoot's infrastructure is completely offline.
+
+## Next Steps
+
+- [Dashboard Guide](dashboard) — how operators interact with this architecture
+- [SDK Reference](sdk) — how developers integrate with the proxy
+- [Security Model](security) — threat model and mitigations
+- [Kill Switch](kill-switch) — the four tiers of revocation

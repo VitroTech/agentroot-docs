@@ -1,0 +1,121 @@
+---
+title: "Dashboard Guide"
+description: "Operator guide for managing agents, API keys, monitoring, and kill switches."
+---
+
+# Dashboard Guide
+
+The AgentRoot dashboard at [ux.agentroot.app](https://ux.agentroot.app) is the operator's control plane. This guide covers everything you can do from the dashboard.
+
+## Authentication
+
+The dashboard supports two sign-in methods:
+
+**Social Login (Google / GitHub)** — click **Sign in with Google** or **Sign in with GitHub**. Fastest way to get started. AgentRoot's managed attester handles onchain attestations on your behalf.
+
+**SIWE (Sign-In with Ethereum)** — click **Connect Wallet** and sign the authentication message. Your wallet becomes your operator identity with sovereign Tier 3 revocation authority.
+
+Both methods give you full access to all dashboard features. The difference is who holds the onchain attestation authority — see the [Quickstart](quickstart#social-login-vs-siwe-whats-different) for a detailed comparison.
+
+## Agents
+
+### Registering a New Agent
+
+Click **New Agent** and provide a name and optional description. Registration creates:
+
+- A **P-256 keypair** in Vault (private key stays in Vault)
+- An **EAS attestation** on Base (containing the public key + operator identity)
+- A **session token** for the agent to authenticate with the proxy
+
+Your wallet will prompt you to sign the attestation transaction. The gas cost on Base is minimal (< $0.01).
+
+After registration, download or copy the agent credentials:
+
+```
+AGENTROOT_AGENT_ID=0x7a3f...
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx
+AGENTROOT_PROXY=https://proxy.agentroot.app
+```
+
+### Agent Detail View
+
+Each agent's detail page shows:
+
+- **Status** — active, paused, or terminated
+- **EAS attestation UID** — link to the onchain record
+- **Connected APIs** — which providers are configured and their status (enabled/disabled)
+- **Activity log** — recent API calls with timestamps, providers, status codes, and latency
+- **Session token status** — current token TTL and last refresh time
+
+### Pausing and Resuming
+
+Use the **Pause** toggle to temporarily stop all API access for an agent. This is a Tier 2 kill — instant, reversible, no onchain transaction needed. Resume when ready.
+
+## API Keys
+
+### Adding a Key
+
+From the agent detail page, click **Add API Key**:
+
+1. **Select provider** — choose from the dropdown (OpenAI, Anthropic, Google, Mistral, Cohere, Groq, etc.) or select **Custom** to enter any URL
+2. **Paste your API key** — entered in a secure iframe on a separate origin
+3. **Add a label** (optional) — e.g., "Production GPT-4o" or "Staging Anthropic"
+4. **Save** — the key is encrypted immediately and stored in Vault
+
+The dashboard never sees the plaintext key after submission. The secure iframe at `vault.agentroot.app` encrypts the key directly into Vault. Even if the dashboard is compromised, your API keys are safe.
+
+### Managing Keys
+
+For each connected API, you can:
+
+- **Toggle on/off** — Tier 1 kill switch. Instantly enable or disable a specific API. The proxy checks this flag on every request.
+- **Replace** — submit a new key for the same provider (the old key is versioned, not deleted)
+- **Remove** — delete the key from Vault entirely
+
+### Supported Providers
+
+The dropdown includes pre-configured providers with auto-filled base URLs and auth patterns. For providers not in the list, use the **Custom** option and enter the base URL and auth header format manually.
+
+## Activity Monitoring
+
+### Request Log
+
+The activity log shows every API call your agent makes through the proxy:
+
+- **Timestamp** — when the call was made
+- **Provider** — which upstream API
+- **Path** — the endpoint called
+- **Status** — HTTP response code
+- **Latency** — round-trip time
+- **Agent** — which agent made the call (useful when managing multiple agents)
+
+### Filtering
+
+Filter the log by agent, provider, status code, or time range. Use this to spot anomalies — unexpected providers, error spikes, or unusual call volumes.
+
+## Kill Switch Controls
+
+The dashboard provides direct access to Tier 1 and Tier 2 kill switches:
+
+- **Tier 1 (per-API toggle)** — click the toggle next to any API connection to disable it. Instant. The proxy rejects requests to that provider with 403.
+- **Tier 2 (agent pause)** — click **Pause Agent** to stop all API access for that agent. Instant. Reversible.
+- **Tier 3 (onchain revocation)** — for SIWE users, the dashboard shows a link to revoke the EAS attestation directly from your wallet. Permanent, sovereign, independent of AgentRoot infrastructure. For social login users, AgentRoot can revoke the managed attestation on your behalf from the dashboard. Sovereign Tier 3 (your wallet, your revocation) requires SIWE — migration from social to SIWE is in development.
+
+For full details on all four tiers, see the [Kill Switch guide](kill-switch).
+
+## Plans and Billing
+
+| Plan | Agents | API Slots | Proxy Calls | Price |
+|------|--------|-----------|-------------|-------|
+| **Free** | 1 | 10 | 10K/mo | $0 |
+| **Pro** | 5 | 50/agent | 100K/mo | $29/mo |
+| **Team** | 25 | Unlimited | 500K/mo | $99/mo |
+| **Enterprise** | Unlimited | Unlimited | Custom | Custom |
+
+All plans include the kill switch, EAS identity, and audit logging.
+
+## Next Steps
+
+- [SDK Reference](sdk) — integrate the proxy into your agent code
+- [Kill Switch](kill-switch) — understand all four revocation tiers
+- [API Reference](api-reference) — raw HTTP endpoints for the proxy

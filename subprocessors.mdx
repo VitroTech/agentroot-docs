@@ -1,0 +1,74 @@
+---
+title: "Subprocessors"
+description: "Third-party services that operate AgentRoot, with data category, region, and certifications."
+---
+
+# Subprocessors
+
+AgentRoot uses the following third-party services to operate the platform. Each entry includes what they process on our behalf, where data is held, and their current security attestations.
+
+This list is part of our [Trust Center](trust-center). Material changes are announced to customers who have opted into security notifications with at least 30 days' notice.
+
+## Production Infrastructure
+
+### Cloudflare
+- **What they process:** HTTPS traffic to AgentRoot (dashboard, API, proxy); Cloudflare Workers execute the secure key-capture and proxy code paths; DNS; DDoS and WAF protection
+- **Data:** Request metadata, IP addresses, encrypted payloads in transit. Cloudflare cannot decrypt API keys or vault contents.
+- **Region:** Global edge; logs primarily `[VERIFY — US]`
+- **Certifications:** SOC 2 Type II, ISO 27001, PCI DSS, FedRAMP Moderate
+
+### HashiCorp Cloud Platform (HCP) — Vault
+- **What they process:** Encrypted storage of customer API keys and agent private keys; HSM-backed unseal
+- **Data:** Encrypted secrets. Cleartext is never visible to HashiCorp infrastructure due to envelope encryption performed before storage.
+- **Region:** `[VERIFY — region]`
+- **Certifications:** SOC 2 Type II, ISO 27001
+
+### `[VERIFY — application hosting provider for dashboard and API: e.g., Fly.io / Railway / AWS / GCP]`
+- **What they process:** AgentRoot application servers and primary database (agent metadata, audit logs, operator account records)
+- **Data:** Agent metadata, operator wallet addresses, audit log entries. No plaintext API keys, no private keys.
+- **Region:** `[VERIFY]`
+- **Certifications:** `[VERIFY]`
+
+## Identity and Onchain
+
+### Ethereum / Base mainnet (via EAS — Ethereum Attestation Service)
+- **What they process:** EAS attestations recording agent identity, agent public keys, and revocation events
+- **Data:** Public — agent public keys, operator wallet addresses, attestation timestamps. No private keys, no API keys, no PII beyond what the operator has chosen to associate with their wallet.
+- **Region:** Public blockchain; operator wallets can be located anywhere
+- **Certifications:** N/A (public ledger; trust derives from cryptographic verification rather than vendor attestation)
+
+## Operational
+
+### Stripe
+- **What they process:** Billing, subscription management, payment card data
+- **Data:** Operator name, billing email, payment method. Card data is held entirely by Stripe — AgentRoot's systems store only the Stripe customer ID and subscription metadata.
+- **Region:** Primarily US, with EU presence
+- **Certifications:** SOC 1 Type II, SOC 2 Type II, ISO 27001, PCI DSS Level 1
+
+### `[VERIFY — transactional email: e.g., Postmark / Resend / Amazon SES]`
+- **What they process:** Transactional notifications (security alerts, billing notices, team invitations)
+- **Data:** Recipient email address and transactional message content
+- **Region:** `[VERIFY]`
+- **Certifications:** `[VERIFY — most major providers are SOC 2 Type II]`
+
+### `[VERIFY — error monitoring: e.g., Sentry / Honeybadger / Bugsnag]`
+- **What they process:** Application error traces with sensitive fields scrubbed at the source
+- **Data:** Stack traces, request metadata. Configured to exclude request/response payloads, key material, and PII fields.
+- **Region:** `[VERIFY]`
+- **Certifications:** `[VERIFY]`
+
+### `[VERIFY — analytics, if any: e.g., PostHog / Plausible / none]`
+- **What they process:** `[VERIFY]`
+- **Data:** `[VERIFY]`
+- **Region:** `[VERIFY]`
+- **Certifications:** `[VERIFY]`
+
+## How We Change This List
+
+Material changes — adding a new subprocessor, removing an existing one, or changing the data category that an existing subprocessor processes — are reflected on this page and announced via email to customers who have opted into security change notifications. We provide at least **30 days' notice** before a material change takes effect.
+
+To opt into change notifications: security@agentroot.com.
+
+---
+
+*Last reviewed: 2026-05-11.*

@@ -1,0 +1,278 @@
+---
+title: "SDK Reference"
+description: "Developer guide for integrating AgentRoot into your agent code."
+---
+
+# SDK Reference
+
+The AgentRoot SDK is a lightweight TypeScript library that handles proxy authentication, request routing, session token management, and error handling.
+
+## Installation
+
+```bash
+npm install @agentroot/sdk
+```
+
+Or with yarn:
+
+```bash
+yarn add @agentroot/sdk
+```
+
+## Configuration
+
+```typescript
+import { AgentRoot } from '@agentroot/sdk';
+
+const ar = new AgentRoot({
+  agentId: process.env.AGENTROOT_AGENT_ID,   // EAS attestation UID
+  token: process.env.AGENTROOT_TOKEN,         // Session token (art_live_xxx)
+  proxy: process.env.AGENTROOT_PROXY,         // https://proxy.agentroot.app
+});
+```
+
+All three values come from the dashboard after agent registration. Store them in environment variables — never hardcode tokens in source.
+
+### Configuration Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `agentId` | `string` | Yes | The agent's EAS attestation UID |
+| `token` | `string` | Yes | Session token (`art_live_xxxxxxxxxxxx`) |
+| `proxy` | `string` | Yes | Proxy URL (`https://proxy.agentroot.app`) |
+| `timeout` | `number` | No | Request timeout in ms (default: 30000) |
+| `retries` | `number` | No | Retry count for transient failures (default: 2) |
+
+## Making Proxied Calls
+
+### Basic Usage
+
+```typescript
+const response = await ar.proxy({
+  provider: 'openai',
+  path: '/v1/chat/completions',
+  method: 'POST',
+  body: {
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Summarize this document.' }],
+  },
+});
+
+console.log(response.status);  // 200
+console.log(response.data);    // OpenAI response body
+```
+
+### Provider Shortcuts
+
+```typescript
+// These are equivalent
+const r1 = await ar.proxy({ provider: 'anthropic', path: '/v1/messages', ... });
+const r2 = await ar.anthropic('/v1/messages', { ... });
+```
+
+Available shortcuts: `ar.openai()`, `ar.anthropic()`, `ar.google()`, `ar.mistral()`, `ar.cohere()`, `ar.groq()`.
+
+### Custom Providers
+
+For providers not in the preset list:
+
+```typescript
+const response = await ar.proxy({
+  provider: 'custom',
+  baseUrl: 'https://my-internal-api.com',
+  path: '/v1/analyze',
+  method: 'POST',
+  body: { data: '...' },
+});
+```
+
+### Streaming Responses
+
+```typescript
+const stream = await ar.proxy({
+  provider: 'openai',
+  path: '/v1/chat/completions',
+  method: 'POST',
+  body: {
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Write a poem.' }],
+    stream: true,
+  },
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content || '');
+}
+```
+
+## Session Token Management
+
+Session tokens have a 24-hour TTL and rotate automatically. The SDK handles this transparently — you don't need to refresh tokens manually.
+
+### Token Lifecycle
+
+```
+1. Agent starts → SDK uses token from env
+2. Token nears expiration → SDK requests refresh from proxy
+3. New token issued → SDK updates in memory
+4. Old token invalidated
+```
+
+### Manual Token Check
+
+```typescript
+const tokenInfo = await ar.getTokenStatus();
+console.log(tokenInfo.expiresAt);  // ISO timestamp
+console.log(tokenInfo.ttlSeconds); // Seconds remaining
+```
+
+### Token Revocation
+
+If a token is compromised, revoke it from the dashboard. The agent will need a new token — download it from the dashboard and update the environment variable.
+
+## Error Handling
+
+The SDK throws typed errors for different failure modes:
+
+```typescript
+import { AgentRootError } from '@agentroot/sdk';
+
+try {
+  const response = await ar.proxy({ ... });
+} catch (error) {
+  if (error instanceof AgentRootError) {
+    switch (error.code) {
+      case 'TOKEN_EXPIRED':
+        // Session token expired — get a new one from dashboard
+        break;
+      case 'TOKEN_REVOKED':
+        // Token was explicitly revoked
+        break;
+      case 'AGENT_KILLED':
+        // Agent has been paused or terminated (Tier 1/2/3)
+        break;
+      case 'PROVIDER_DISABLED':
+        // This specific API has been toggled off (Tier 1)
+        break;
+      case 'ATTESTATION_REVOKED':
+        // Onchain EAS attestation revoked (Tier 3 — permanent)
+        break;
+      case 'RATE_LIMITED':
+        // Usage limit exceeded (auto-kill)
+        break;
+      case 'UPSTREAM_ERROR':
+        // The upstream API returned an error (not AgentRoot's fault)
+        break;
+      case 'VAULT_UNAVAILABLE':
+        // Vault is down — system fails closed, no requests processed
+        break;
+    }
+  }
+}
+```
+
+### Error Response Format
+
+All AgentRoot errors return a consistent JSON structure:
+
+```json
+{
+  "error": {
+    "code": "AGENT_KILLED",
+    "message": "Agent has been paused by operator",
+    "tier": 2
+  }
+}
+```
+
+## Framework Integration Examples
+
+### With LangChain
+
+```typescript
+import { ChatOpenAI } from '@langchain/openai';
+import { AgentRoot } from '@agentroot/sdk';
+
+const ar = new AgentRoot({ ... });
+
+// Use AgentRoot proxy as the base URL for LangChain's OpenAI client
+const llm = new ChatOpenAI({
+  configuration: {
+    baseURL: ar.getProxyUrl('openai'),
+    defaultHeaders: ar.getAuthHeaders(),
+  },
+  modelName: 'gpt-4o',
+});
+```
+
+### With Anthropic SDK
+
+```typescript
+import Anthropic from '@anthropic-ai/sdk';
+import { AgentRoot } from '@agentroot/sdk';
+
+const ar = new AgentRoot({ ... });
+
+const client = new Anthropic({
+  baseURL: ar.getProxyUrl('anthropic'),
+  defaultHeaders: ar.getAuthHeaders(),
+});
+```
+
+### With fetch (No SDK)
+
+If you prefer not to use the SDK, call the proxy directly with standard HTTP:
+
+```typescript
+const response = await fetch('https://proxy.agentroot.app/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID,
+    'X-AgentRoot-Provider': 'openai',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Hello' }],
+  }),
+});
+```
+
+## Helper Methods
+
+### `ar.getProxyUrl(provider)`
+
+Returns the proxy URL formatted for a specific provider. Useful for injecting into third-party SDKs.
+
+```typescript
+ar.getProxyUrl('openai');
+// → "https://proxy.agentroot.app/openai"
+```
+
+### `ar.getAuthHeaders()`
+
+Returns the authentication headers as an object. Useful for injecting into third-party HTTP clients.
+
+```typescript
+ar.getAuthHeaders();
+// → { "Authorization": "Bearer art_live_xxx", "X-AgentRoot-ID": "0x7a3f..." }
+```
+
+### `ar.healthCheck()`
+
+Verifies connectivity to the proxy and token validity.
+
+```typescript
+const health = await ar.healthCheck();
+console.log(health.proxy);    // "ok"
+console.log(health.token);    // "valid"
+console.log(health.vault);    // "ok"
+```
+
+## Next Steps
+
+- [API Reference](api-reference) — raw HTTP endpoints if you're not using the SDK
+- [Architecture](architecture) — understand what happens inside the proxy
+- [Kill Switch](kill-switch) — what your agent sees when it's killed

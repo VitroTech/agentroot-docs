@@ -1,0 +1,131 @@
+---
+title: "Compliance Mapping"
+description: "OWASP Agentic Top 10, EU AI Act, and NIST AI RMF requirements mapped to AgentRoot's architecture."
+---
+
+# Compliance Mapping
+
+AgentRoot's architecture satisfies the security, auditability, and governance requirements emerging across major regulatory and industry frameworks. This page maps AgentRoot's capabilities to OWASP Agentic Top 10, EU AI Act, and NIST AI Risk Management Framework.
+
+## OWASP Agentic Security Top 10 (December 2025)
+
+The OWASP Agentic Security Initiatives published the first Top 10 risks specific to autonomous AI agent deployments. AgentRoot addresses each relevant category.
+
+### ASI-01: Excessive Agency / Goal Hijacking
+
+**Risk:** An agent pursues goals outside its sanctioned scope — via prompt injection, goal drift, or adversarial manipulation.
+
+**How AgentRoot mitigates:**
+The agent never holds API keys. Even if the agent's reasoning is hijacked, its blast radius is bounded by the proxy's policy layer. The agent can only call APIs that the operator has explicitly connected, and each connection can be toggled off independently (Tier 1 kill switch). Usage-based auto-kill catches runaway behavior before the operator notices.
+
+**Relevant docs:** [Kill Switch](kill-switch) — Tier 1 and Auto-Kill sections.
+
+### ASI-03: Identity and Access Abuse
+
+**Risk:** Agents impersonate other agents, escalate privileges, or use credentials beyond their authorized scope.
+
+**How AgentRoot mitigates:**
+Every agent has a unique cryptographic identity anchored in an Ethereum/EAS attestation. The session token is scoped to a single agent — it cannot be used to access another agent's APIs or configuration. The policy engine validates the agent's identity on every request. Private keys are custodied in the vault and never exported, preventing forgery.
+
+**Relevant docs:** [Architecture](architecture) — Key Custody and Policy Engine sections. [Security](security) — Session Token Security section.
+
+### ASI-05: Privilege Escalation
+
+**Risk:** Agents gain access to resources or capabilities beyond their intended scope through token manipulation, role confusion, or exploiting trust relationships.
+
+**How AgentRoot mitigates:**
+Two-plane isolation means the agent plane has zero access to the control plane. The agent cannot reach the dashboard, vault, or policy engine — it only talks to the proxy. Session tokens are scoped, time-limited (24-hour TTL), and cannot be extended or modified by the agent. There is no token-based privilege escalation path because the token contains no key material.
+
+**Relevant docs:** [Architecture](architecture) — Two-Plane Isolation and What the Agent Knows sections.
+
+### ASI-07: Unsafe Actions and Outputs
+
+**Risk:** Agents perform destructive actions — data deletion, unauthorized transactions, unintended external communications — due to misaligned goals or prompt injection.
+
+**How AgentRoot mitigates:**
+The proxy is the only path to upstream APIs. Operators control exactly which providers are connected per agent and can disable any connection instantly. Auto-kill triggers fire on anomalous usage patterns (request rate, volume, cost thresholds). Full audit logging means every action is traceable to a specific agent, session, and timestamp — providing the forensic trail needed for incident response.
+
+**Relevant docs:** [Kill Switch](kill-switch) — Auto-Kill section. [Architecture](architecture) — How a Request Flows section.
+
+### ASI-10: Rogue Agents
+
+**Risk:** Agents operate outside the operator's control — continuing to act after their authorization should have ended, resisting shutdown, or operating autonomously of the platform.
+
+**How AgentRoot mitigates:**
+Tier 3 kill switch — sovereign onchain revocation from the operator's Ethereum wallet. This is the definitive answer to rogue agents: the revocation is permanent, onchain, and works independently of AgentRoot's infrastructure. No server, no API, no dashboard required. The EAS attestation is revoked directly on Ethereum, and the proxy checks attestation status on every request. A revoked agent is dead across all infrastructure, permanently, with an immutable onchain proof of termination.
+
+**Relevant docs:** [Kill Switch](kill-switch) — Tier 3 section. [Security](security) — Onchain Security Properties section.
+
+## EU AI Act (Binding August 2026)
+
+The EU AI Act establishes binding requirements for AI systems deployed in the EU. While AgentRoot is infrastructure (not an AI model), operators using AgentRoot to manage agents in EU markets benefit from built-in compliance capabilities.
+
+### Article 9: Risk Management
+
+**Requirement:** Providers and deployers must implement risk management systems that identify, analyze, estimate, and evaluate risks, including measures to eliminate or reduce risk.
+
+**How AgentRoot supports compliance:**
+Four independent kill switch tiers provide layered risk mitigation. Auto-kill enforces pre-configured usage thresholds automatically. Fail-closed design ensures the system never degrades to an insecure state. The proxy-based architecture bounds the blast radius of any agent compromise — agents cannot access keys, cannot escalate privileges, and cannot bypass the policy layer.
+
+### Article 13: Transparency
+
+**Requirement:** AI systems must be designed to ensure their operation is sufficiently transparent, including appropriate logging and documentation.
+
+**How AgentRoot supports compliance:**
+Every API call is logged with agent identity, provider, timestamp, response status, and latency. Audit logs are queryable per agent, per provider, per session, and per time window. The onchain EAS attestation is publicly verifiable — anyone can confirm an agent's registration status, operator, and revocation history by querying Ethereum.
+
+### Article 14: Human Oversight
+
+**Requirement:** AI systems must be designed to allow effective human oversight, including the ability to interrupt, override, or shut down the system.
+
+**How AgentRoot supports compliance:**
+This is AgentRoot's core value proposition. The four-tier kill switch gives operators graduated control from surgical (toggle one API) to nuclear (onchain revocation). Tier 3's sovereign kill works from any device with an Ethereum wallet — no VPN, no SSH, no server access required. The dashboard provides real-time monitoring of all agent activity. Auto-kill provides automated oversight even when the human operator is unavailable.
+
+## NIST AI Risk Management Framework (AI RMF) + Executive Order 14110
+
+The NIST AI RMF provides voluntary guidance on managing AI risks. Several subcategories map directly to AgentRoot's architecture.
+
+### Govern 1.1: Accountability
+
+**Requirement:** Roles, responsibilities, and lines of authority for AI systems must be clearly defined.
+
+**How AgentRoot supports compliance:**
+Every agent is linked to an operator via a cryptographic chain: Ethereum wallet → EAS attestation → agent public key → vault-custodied private key → session tokens. This creates an unambiguous accountability chain. The operator wallet that signed the attestation is the legally attributable principal. Every action the agent takes is logged against this identity chain.
+
+### Map 5.1: Attribution
+
+**Requirement:** AI system outputs and actions must be attributable to the system and its operators.
+
+**How AgentRoot supports compliance:**
+The proxy logs every API call with the agent's unique identifier, the operator's wallet-linked identity, the specific provider called, the timestamp, and the response status. The onchain attestation provides public, immutable proof of which wallet registered which agent. Combined, these create a complete attribution chain from any API call back to a specific operator.
+
+### Measure 2.5: Audit Trails
+
+**Requirement:** AI systems must maintain records that support post-hoc analysis and accountability.
+
+**How AgentRoot supports compliance:**
+Audit logs capture every API call through the proxy. The onchain attestation history (creation, revocation, re-minting) is immutable and publicly queryable on Ethereum. Kill switch events (all four tiers) are logged with timestamps and actor identity. Session token issuance and revocation are recorded. This creates a tamper-evident audit trail that spans both off-chain operations and onchain identity events.
+
+## Summary Matrix
+
+| Requirement | Framework | AgentRoot Feature |
+|---|---|---|
+| Agent identity and scope | OWASP ASI-01, ASI-03 | Per-agent EAS attestation, scoped session tokens, proxy policy enforcement |
+| Privilege boundaries | OWASP ASI-05 | Two-plane isolation, vault-custodied keys, no escalation path |
+| Rogue agent shutdown | OWASP ASI-10 | Tier 3 sovereign onchain revocation |
+| Risk mitigation | EU AI Act Art. 9 | Four-tier kill switch, auto-kill, fail-closed design |
+| Transparency and logging | EU AI Act Art. 13 | Full audit logging, publicly verifiable onchain attestations |
+| Human oversight and shutdown | EU AI Act Art. 14 | Kill switches from any device, real-time dashboard monitoring |
+| Accountability chain | NIST Govern 1.1 | Wallet → attestation → agent → session → API call |
+| Action attribution | NIST Map 5.1 | Per-call logging with agent + operator identity |
+| Audit trails | NIST Measure 2.5 | Off-chain audit logs + onchain attestation history |
+
+## A Note on Compliance
+
+AgentRoot is infrastructure — it does not determine whether your AI agent is compliant with any specific regulation. Compliance depends on your agent's purpose, the data it processes, and the jurisdiction it operates in. What AgentRoot provides is the security, auditability, and control primitives that regulators require at the infrastructure layer: identity, scoping, revocation, logging, and human oversight. These are necessary conditions for compliance, not sufficient ones.
+
+If you have questions about using AgentRoot in a regulated context, reach out. We work with operators to ensure the infrastructure layer supports their compliance requirements.
+
+## Vendor Attestations and Trust Center
+
+For the specific vendors AgentRoot relies on, their SOC 2, ISO 27001, and PCI DSS attestations, and our own compliance roadmap (including the trigger conditions for SOC 2 Type I and Type II), see the [Trust Center](trust-center) and [Subprocessor List](subprocessors). Security contact: security@agentroot.com.

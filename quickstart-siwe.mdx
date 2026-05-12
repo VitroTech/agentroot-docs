@@ -1,0 +1,151 @@
+---
+title: "Quickstart: SIWE (Wallet)"
+description: "Connect your Ethereum wallet, register an agent, and make your first proxied call in under 5 minutes."
+---
+
+# Quickstart: SIWE (Wallet)
+
+Connect your Ethereum wallet, register an agent with sovereign onchain identity, add an API key, and make your first proxied API call. Total time: about 5 minutes.
+
+## Prerequisites
+
+- An Ethereum wallet (MetaMask, Coinbase Wallet, or any WalletConnect-compatible wallet)
+- A small amount of ETH on Base for the attestation transaction (< $0.01)
+- An API key for at least one provider (e.g., OpenAI, Anthropic)
+
+## Step 1: Connect Your Wallet
+
+Go to [ux.agentroot.app](https://ux.agentroot.app) and click **Connect Wallet**. Sign the SIWE (Sign-In with Ethereum) message to authenticate. This proves you own the wallet — no password, no email, no account creation.
+
+Your wallet address becomes your operator identity. All agents you register are attested by your wallet, and only your wallet can revoke them onchain (Tier 3 kill switch). This authority is sovereign to you — not even AgentRoot can override it.
+
+## Step 2: Register an Agent
+
+Click **New Agent** in the dashboard. Provide:
+
+- **Agent Name** — a human-readable label (e.g., "research-bot-prod")
+- **Agent Description** — what this agent does (optional, stored onchain)
+
+Click **Create**. Two things happen:
+
+1. **Vault generates a P-256 keypair** — the private key stays in Vault and is never exported. The public key is included in the onchain attestation.
+2. **An EAS attestation is created on Base** — this is your agent's onchain identity. Immutable, publicly verifiable, and revocable only by your wallet.
+
+Your wallet will prompt you to sign the attestation transaction. Approve it. The gas cost on Base is minimal (< $0.01).
+
+## Step 3: Follow the Dashboard Wizard
+
+After the attestation is linked, the dashboard wizard continues through credentials, SDK init, API key ingestion, and your first proxied call — all inline. Each step confirms success before moving to the next. You don't need to leave the dashboard until it's time to run the SDK init command in your terminal.
+
+### Download Your Agent Credentials
+
+The wizard shows your agent's credentials:
+
+```
+AGENTROOT_AGENT_ID=0x7a3f...  (your agent's unique ID — the EAS attestation UID)
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx  (session token, 24-hour TTL)
+AGENTROOT_PROXY=https://proxy.agentroot.app
+```
+
+Download or copy these values. You'll add them to your agent's environment.
+
+The session token is the only secret here, and it expires in 24 hours. If it's compromised, revoke it from the dashboard and a new one is issued automatically.
+
+### Configure Your Agent
+
+Copy the three environment variables into your agent's `.env` file (the wizard has a "Copy All" button):
+
+```bash
+AGENTROOT_AGENT_ID=0x7a3f...
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx
+AGENTROOT_PROXY=https://proxy.agentroot.app
+```
+
+### Initialize the SDK
+
+The wizard prompts you to run the SDK init command and polls for confirmation:
+
+```bash
+npx @agentroot/sdk init
+```
+
+The dashboard badge transitions from "Awaiting Init" to "Bound" once the init completes. This binds the agent to your machine — stolen credentials alone won't work without it.
+
+### Add an API Key
+
+The next wizard step presents the API key ingestion iframe inline.
+
+1. Select a **provider** from the dropdown (e.g., OpenAI, Anthropic, Mistral)
+2. Paste your **API key**
+3. Add an optional **label** (e.g., "Production GPT-4o")
+4. Click **Save**
+
+Your API key is encrypted immediately and stored in Vault. The dashboard never sees the plaintext key after submission. The proxy will inject this key into outbound requests when your agent calls this provider.
+
+### Make Your First Proxied Call
+
+The wizard's final step shows a ready-to-run test call with tabs for SDK, cURL, and Python:
+
+```typescript
+const response = await ar.proxy({
+  provider: 'openai',
+  path: '/v1/chat/completions',
+  method: 'POST',
+  body: {
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Hello from AgentRoot!' }],
+  },
+});
+
+console.log(response.data);
+```
+
+The proxy handles everything: validates your session token, injects your OpenAI API key, forwards the request, logs the call, and returns the response. Your agent code never sees the API key.
+
+### Alternative: Use cURL
+
+If you're not using the SDK, call the proxy directly:
+
+```bash
+curl -X POST https://proxy.agentroot.app/v1/chat/completions \
+  -H "Authorization: Bearer art_live_xxxxxxxxxxxx" \
+  -H "X-AgentRoot-ID: 0x7a3f..." \
+  -H "X-AgentRoot-Provider: openai" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello from AgentRoot!"}]
+  }'
+```
+
+## What Just Happened
+
+```
+Your agent → proxy.agentroot.app
+  → Token validated against Vault ✓
+  → Kill switch checked (all clear) ✓
+  → API key retrieved from Vault ✓
+  → Key injected into request ✓
+  → Request forwarded to api.openai.com ✓
+  → Response returned to your agent ✓
+  → Call logged (agent, provider, status, latency) ✓
+```
+
+Your agent made an API call without ever holding the API key. The call is logged in your dashboard. The API key stays in Vault.
+
+## Your Sovereign Authority
+
+Because you signed in with SIWE, you are the attester on your agent's EAS attestation. This means:
+
+- **Tier 3 kill switch is yours alone.** You can revoke the attestation from any Ethereum wallet interface — MetaMask, Ledger, Coinbase Wallet, even a hardware wallet in a safe deposit box. No dashboard needed. No AgentRoot servers needed.
+- **The attestation is publicly verifiable.** Anyone can query the EAS contract on Base and confirm your agent's identity, its public key, and whether it's still active.
+- **Revocation is permanent and tamper-proof.** Once you revoke, the agent is dead onchain. No one can undo it — not AgentRoot, not Coinbase, not Base.
+
+This is the strongest form of agent control available. You own the kill switch the same way you own your ETH.
+
+## Next Steps
+
+- [Dashboard Guide](dashboard) — monitor activity, manage keys, use the kill switch
+- [SDK Reference](sdk) — full SDK API, session token refresh, error handling
+- [Kill Switch](kill-switch) — understand the four tiers of revocation
+- [Architecture](architecture) — how the proxy, Vault, and EAS work together

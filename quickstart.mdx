@@ -1,0 +1,25 @@
+---
+title: "Quickstart"
+description: "Choose your sign-in method and register your first agent in under 5 minutes."
+---
+
+# Quickstart
+
+AgentRoot supports two sign-in methods. Choose the one that fits your workflow:
+
+**[Quickstart: Social Login](quickstart-social)** — Sign in with Google or GitHub. No wallet needed. Fastest path to a working agent.
+
+**[Quickstart: SIWE (Wallet)](quickstart-siwe)** — Connect your Ethereum wallet. Full sovereign control over your onchain identity and Tier 3 kill switch.
+
+Both paths give you the same product: onchain agent identity, API proxy, kill switch, and audit trail. The difference is who holds the attestation authority.
+
+| | Social Login | SIWE |
+|---|---|---|
+| **Sign in** | Google or GitHub | Ethereum wallet |
+| **Attester** | AgentRoot managed (`agentroot.eth`) | Your wallet |
+| **Tier 1-2 kill switch** | Dashboard (same) | Dashboard (same) |
+| **Tier 3 kill switch** | Dashboard (AgentRoot revokes on your behalf) | Your wallet directly (independent of AgentRoot) |
+| **Onchain ownership** | AgentRoot attester holds revocation authority | You hold revocation authority |
+| **Upgrade path** | Migration to SIWE in development | Already sovereign |
+
+**Our recommendation:** Start with social login to get up and running fast. If you need sovereign Tier 3 control today — where you revoke onchain from your own wallet, independent of AgentRoot — choose SIWE. We're building a migration path so social login users can upgrade to wallet control without re-registering agents.

@@ -1,0 +1,155 @@
+---
+title: "API Reference"
+description: "HTTP endpoints for the AgentRoot proxy and dashboard API."
+---
+
+# API Reference
+
+This reference covers the raw HTTP endpoints for developers who prefer to call the proxy directly without the SDK.
+
+## Proxy Endpoints
+
+Base URL: `https://proxy.agentroot.app`
+
+### POST /\{path\}
+
+Proxied API call. The proxy forwards the request to the upstream provider, injecting the API key from Vault.
+
+**Request Headers:**
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `Authorization` | Yes | `Bearer <session_token>` — your agent's session token |
+| `X-AgentRoot-ID` | Yes | Your agent's EAS attestation UID |
+| `X-AgentRoot-Provider` | Yes | Provider identifier (e.g., `openai`, `anthropic`, `mistral`) |
+| `Content-Type` | Yes | Usually `application/json` |
+
+**Request Body:** Pass through the exact body the upstream API expects. The proxy does not modify the request body.
+
+**Example:**
+
+```bash
+curl -X POST https://proxy.agentroot.app/v1/chat/completions \
+  -H "Authorization: Bearer art_live_xxxxxxxxxxxx" \
+  -H "X-AgentRoot-ID: 0x7a3f..." \
+  -H "X-AgentRoot-Provider: openai" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+**Success Response:** The upstream API's response is returned as-is, with the same status code, headers, and body.
+
+**Error Responses:**
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `TOKEN_EXPIRED` | Session token has expired. Get a new one from the dashboard. |
+| 401 | `TOKEN_REVOKED` | Session token was explicitly revoked. |
+| 401 | `TOKEN_INVALID` | Session token is malformed or not recognized. |
+| 403 | `AGENT_KILLED` | Agent has been paused or terminated (Tier 2). |
+| 403 | `PROVIDER_DISABLED` | This specific API has been toggled off (Tier 1). |
+| 403 | `ATTESTATION_REVOKED` | EAS attestation has been revoked onchain (Tier 3). |
+| 429 | `RATE_LIMITED` | Usage limit exceeded. Auto-kill triggered. |
+| 502 | `UPSTREAM_ERROR` | The upstream API returned an error. |
+| 503 | `VAULT_UNAVAILABLE` | Vault is unreachable. System fails closed. |
+
+**Error Response Body:**
+
+```json
+{
+  "error": {
+    "code": "AGENT_KILLED",
+    "message": "Agent has been paused by operator",
+    "tier": 2
+  }
+}
+```
+
+### GET /health
+
+Health check endpoint. Returns proxy status and connectivity to Vault.
+
+```bash
+curl https://proxy.agentroot.app/health \
+  -H "Authorization: Bearer art_live_xxxxxxxxxxxx" \
+  -H "X-AgentRoot-ID: 0x7a3f..."
+```
+
+**Response:**
+
+```json
+{
+  "proxy": "ok",
+  "token": "valid",
+  "vault": "ok",
+  "ttl_seconds": 72400
+}
+```
+
+## Authentication
+
+### Session Tokens
+
+Format: `art_live_xxxxxxxxxxxx`
+
+Session tokens are issued by Vault during agent registration and have a 24-hour TTL. They rotate automatically. Include the token in every request as a Bearer token in the `Authorization` header.
+
+### Agent ID
+
+Format: `0x` + hex string (EAS attestation UID)
+
+The agent ID is the onchain EAS attestation UID. It's stable and permanent for the lifetime of the agent. Include it in every request in the `X-AgentRoot-ID` header.
+
+### Provider Identifier
+
+The `X-AgentRoot-Provider` header tells the proxy which API key to inject. Use the provider identifiers from the table below, or use `custom` for self-hosted endpoints.
+
+| Provider | Identifier | Base URL (auto-resolved) |
+|----------|-----------|--------------------------|
+| OpenAI | `openai` | `https://api.openai.com` |
+| Anthropic | `anthropic` | `https://api.anthropic.com` |
+| Google Gemini | `google` | `https://generativelanguage.googleapis.com` |
+| Mistral | `mistral` | `https://api.mistral.ai` |
+| Cohere | `cohere` | `https://api.cohere.com` |
+| Groq | `groq` | `https://api.groq.com` |
+| Perplexity | `perplexity` | `https://api.perplexity.ai` |
+| xAI (Grok) | `xai` | `https://api.x.ai` |
+| Together AI | `together` | `https://api.together.xyz` |
+| Fireworks AI | `fireworks` | `https://api.fireworks.ai` |
+| Replicate | `replicate` | `https://api.replicate.com` |
+| Hugging Face | `huggingface` | `https://api-inference.huggingface.co` |
+| Stability AI | `stability` | `https://api.stability.ai` |
+| ElevenLabs | `elevenlabs` | `https://api.elevenlabs.io` |
+| Deepgram | `deepgram` | `https://api.deepgram.com` |
+| Pinecone | `pinecone` | `https://api.pinecone.io` |
+| Custom | `custom` | Specified by operator in dashboard |
+
+## Rate Limits
+
+Rate limits are set by the operator in the dashboard (per-agent, per-provider). When a limit is exceeded, the proxy returns `429 RATE_LIMITED` and the agent is auto-paused.
+
+The proxy adds rate limit headers to every response:
+
+```
+X-AgentRoot-RateLimit-Remaining: 4523
+X-AgentRoot-RateLimit-Reset: 1711000000
+```
+
+## Streaming
+
+The proxy supports streaming responses (SSE / chunked transfer encoding). Set `stream: true` in your request body as you would with the upstream API. The proxy passes through the stream without buffering.
+
+## Request Size Limits
+
+- **Request body:** 10 MB maximum
+- **Response body:** No limit (streamed through)
+- **Headers:** 8 KB maximum
+
+## Next Steps
+
+- [SDK Reference](sdk) — higher-level interface for these endpoints
+- [Kill Switch](kill-switch) — understand what each error code means for your agent
+- [Security Model](security) — how the proxy protects your credentials

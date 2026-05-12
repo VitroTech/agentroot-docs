@@ -1,0 +1,132 @@
+---
+title: "Trust Center"
+description: "Security posture, encryption, access controls, incident response, vendor list, and AgentRoot's compliance roadmap."
+---
+
+# Trust Center
+
+AgentRoot manages cryptographic identities and API credentials for autonomous AI agents. This page is the single source of truth for how we secure that data, what subprocessors are in our supply chain, and how to reach us about security concerns.
+
+## Quick Reference
+
+| | |
+|---|---|
+| **Security architecture** | [Security model](security) |
+| **Regulatory mapping** | [OWASP Agentic Top 10, EU AI Act, NIST AI RMF](compliance) |
+| **Subprocessors** | [Current list](subprocessors) |
+| **Vulnerability disclosure** | security@agentroot.com — [Policy](vulnerability-disclosure) |
+| **Privacy policy** | https://agentroot.app/privacy |
+| **Terms of service** | https://agentroot.app/terms |
+| **Acceptable use policy** | https://agentroot.app/acceptable-use |
+| **Data processing addendum** | Available on request — security@agentroot.com |
+| **Status page** | `[VERIFY — status page URL once provisioned]` |
+
+## How We Protect Your Data
+
+### Zero-knowledge API key ingestion
+
+When you add a third-party API key (OpenAI, Anthropic, or any custom provider), the key is entered into an isolated capture component served from a separate origin than the AgentRoot dashboard. The dashboard itself never sees the key — browser same-origin policy makes it architecturally impossible for AgentRoot's frontend code to read the value. The key is encrypted in transit and submitted directly to our encrypted vault.
+
+This means a successful XSS attack against the AgentRoot dashboard — whether through malicious code, a compromised dependency, or a browser extension — cannot exfiltrate user-supplied API keys. The keys are not in the dashboard's reach at any point.
+
+See [Security → Zero-Knowledge Key Ingestion](security) for the full architecture.
+
+### Encryption
+
+- **In transit:** TLS 1.3 for all client connections; TLS 1.2+ for backend service-to-service traffic
+- **At rest:** AES-256 via the encrypted vault; vault unseal material held in HSM-backed KMS
+- **Onchain identity:** Public keys only on Ethereum/Base via EAS attestations; private keys never leave the vault
+
+### Access controls
+
+- **Customer authentication:** SIWE (Sign-In with Ethereum); optional second factor via mobile signer for high-risk operations
+- **Internal access:** Role-based and least-privilege; production vault access restricted to a named subset of engineers; all production access is logged
+- **Production changes:** Two-person review required for any change that touches key custody, the proxy code path, or the policy engine
+- **Session credentials:** 24-hour TTL with automatic rotation; instant revocation from the dashboard or onchain
+
+### Audit logging
+
+Every API call routed through the AgentRoot proxy is logged with agent identity, operator wallet, provider, timestamp, response status, and latency. Operators can query logs for their own agents from the dashboard. Kill switch events at all four tiers are recorded. EAS attestation lifecycle events are publicly verifiable on the underlying blockchain.
+
+Log retention: `[VERIFY — default 90 days, longer retention available on enterprise tier]`.
+
+### Sovereign kill switches
+
+AgentRoot's defining feature is that operators can permanently revoke an agent from their own wallet, independent of AgentRoot's infrastructure. Even if AgentRoot is offline, compromised, or has gone out of business, the onchain attestation remains revocable. See [Kill Switch](kill-switch) for all four tiers.
+
+### Fail-closed design
+
+If the vault becomes unavailable, the proxy stops serving requests. No cached keys are used. No fallback authentication is attempted. Downtime is always preferred over unauthorized access.
+
+## Incident Response
+
+### Detection
+
+Production systems are monitored for: anomalous request patterns at the proxy, vault access outside approved code paths, unexpected outbound traffic, sudden cost spikes against connected providers, and failed authentication patterns.
+
+### Response
+
+A documented internal runbook governs incident triage, containment, customer communication, and post-incident review. On confirmation of an incident affecting customer data, AgentRoot will notify affected customers within **72 hours** of confirmation, consistent with GDPR Article 33 timelines.
+
+### Post-incident
+
+We commit to publishing a post-incident report for any incident affecting customer data, including: timeline, root cause, scope of impact, remediation taken, and changes made to prevent recurrence.
+
+## Data Handling
+
+### What we store
+
+- **Customer-supplied API keys:** Encrypted in the vault. Not in logs, not in databases, not in error traces.
+- **Agent metadata:** Agent name, purpose, connected providers, configuration parameters.
+- **Usage logs:** Per-call records (agent ID, provider, timestamp, status, cost). Default retention `[VERIFY — 90 days]`; operators can export or extend retention on enterprise tier.
+- **Operator identity:** Ethereum wallet address; optional email address for transactional notifications.
+- **Billing data:** Handled by Stripe. AgentRoot stores only Stripe customer ID and subscription metadata — no payment card data ever touches AgentRoot's infrastructure.
+
+### What we don't store
+
+- Plaintext copies of API keys (encrypted-only in the vault; not in backups, not in logs, not in databases)
+- The contents of API requests or responses passing through the proxy (we log metadata, not payloads)
+- Private keys of any kind in any system outside the vault
+
+### Data residency
+
+Production data is hosted in `[VERIFY — primary region]`. EU customer data residency is available on request.
+
+### Data deletion
+
+Operators can delete agents from the dashboard. Deletion removes encrypted keys from the active vault. EAS attestation revocation is a separate, onchain action initiated from the operator's wallet — see [Kill Switch → Tier 3](kill-switch). Audit logs are retained per the retention policy above; customers can request earlier deletion subject to legal hold considerations.
+
+## Compliance Posture
+
+### Current state at launch
+
+- Architecture designed against the OWASP Agentic Top 10, EU AI Act, and NIST AI RMF — see [Compliance Mapping](compliance)
+- Privacy policy, terms of service, and acceptable use policy published
+- Trust Center published (this page)
+- Subprocessor list published with material-change notification commitment
+- Vulnerability disclosure policy published with named contact
+- Data processing addendum available on request
+
+### Planned in the first 12 months
+
+- **Q1 post-launch:** Independent third-party penetration test; remediation of findings; attestation letter added to this page
+- **On first enterprise contract gated by SOC 2:** SOC 2 Type I via a startup-friendly audit firm (target 60–90 days from trigger)
+- **On sustained enterprise pipeline:** SOC 2 Type II (target initiation when we have three enterprise customers under contract or a single enterprise contract above $50k ARR)
+
+### What we do not currently hold
+
+AgentRoot does not currently hold SOC 2, ISO 27001, or PCI certification. We are not subject to PCI scope — payment data is handled entirely by Stripe, which is PCI DSS Level 1 certified.
+
+We are happy to discuss our security posture, architecture, and roadmap with any prospect's security team. Reach us at **security@agentroot.com**.
+
+## Contact
+
+| Purpose | Address |
+|---|---|
+| Security disclosures and vulnerabilities | security@agentroot.com |
+| Privacy inquiries and data subject requests | privacy@agentroot.com |
+| General trust and compliance questions | trust@agentroot.com |
+
+---
+
+*This page is reviewed quarterly and on every material change to AgentRoot's security architecture, subprocessor list, or compliance posture. Last reviewed: 2026-05-11.*

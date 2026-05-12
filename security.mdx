@@ -1,0 +1,135 @@
+---
+title: "Security Model"
+description: "Trust model, key custody, and threat mitigations."
+---
+
+# Security Model
+
+AgentRoot is designed with security as a first principle at every layer. This page explains the trust model, key custody architecture, and how common threats are mitigated.
+
+## Trust Boundaries
+
+AgentRoot's components operate at distinct trust levels:
+
+| Component | Trust Level | What It Can Do | What It Cannot Do |
+|-----------|------------|----------------|-------------------|
+| **Dashboard** | Untrusted for keys | Submit keys for storage, manage agents, view logs | Retrieve plaintext API keys, access the vault directly |
+| **API Proxy** | Semi-trusted | Forward requests, temporarily hold key in-process | Store keys, bypass policy validation |
+| **Policy Engine** | Trusted for authorization | Validate tokens, resolve keys, enforce kill switches | Export private keys from the vault |
+| **Encrypted Vault** | Trusted for secrets | Store keys, issue tokens, manage keypairs | Operate if unavailable (fail-closed) |
+| **EAS on Base** | Trusted for identity | Record attestations, process revocations | Be modified by anyone other than the attester |
+
+**No single component compromise gives an attacker full access.** Compromising the dashboard doesn't expose API keys (they're in the vault). Compromising the proxy doesn't give key storage (it only holds keys in-process momentarily). Compromising the vault requires bypassing its access policies and audit logging.
+
+## Zero-Knowledge Key Ingestion
+
+When an operator adds an API key, the key is entered in a **secure, isolated component on a separate origin** from the dashboard. The key is encrypted immediately and stored in the vault. No plaintext key data ever crosses back to the dashboard.
+
+The dashboard application **never has access** to the raw API key. Even if the dashboard is compromised (XSS, supply chain attack, malicious extension), the attacker cannot extract API keys. The key ingestion component has the minimum permissions needed: encrypt and store. It cannot decrypt existing keys, read other agents' data, or modify vault configuration.
+
+## Private Key Custody (ARSK)
+
+The Agent Root Secret Key (ARSK) is a P-256 keypair generated inside the encrypted vault during registration. The private key is subject to the strictest custody rules in the system:
+
+- **Never exported** — not for backup, not for debugging, not for migration
+- **Never transmitted** over any network — cryptographic operations happen inside the vault
+- **Never stored** anywhere other than the vault's encrypted backend
+- **Not accessible** to any component, including the dashboard and proxy
+
+The public key is recorded in the EAS attestation on Base, creating a verifiable link between the onchain identity and the vault-custodied private key.
+
+## Session Token Security
+
+Session tokens (`art_live_xxxxxxxxxxxx`) are the agent's runtime credential:
+
+| Property | Value |
+|----------|-------|
+| **TTL** | 24 hours (configurable) |
+| **Rotation** | Automatic — SDK handles refresh |
+| **Scope** | Bound to a single agent ID |
+| **Revocation** | Instant, from the dashboard |
+
+**If a token is compromised**, the damage is bounded:
+
+- The attacker can make API calls as the agent for up to 24 hours
+- The attacker **cannot** access other agents, API keys, or the dashboard
+- The attacker **cannot** extend the token's TTL or prevent rotation
+- Revoking the token from the dashboard kills it immediately (Tier 2)
+- Revoking the EAS attestation from your wallet kills the agent permanently, onchain, independent of AgentRoot (Tier 3)
+- The underlying P-256 identity is completely unaffected by token revocation
+
+The session token is not a private key, not a wallet seed, and not an API key. It's a short-lived access credential that can be burned and reissued without affecting the agent's identity.
+
+## Fail-Closed Design
+
+If the vault becomes unavailable, the entire system stops processing requests. This is intentional.
+
+- Proxy returns `503 VAULT_UNAVAILABLE` for all requests
+- No cached keys are used
+- No fallback authentication is attempted
+- The system resumes automatically when the vault is restored
+
+Downtime is always preferred over unauthorized access.
+
+## Threat Mitigations
+
+### Agent Runtime Compromised
+
+**Threat:** An attacker gains access to the agent's environment (.env file, memory, filesystem).
+
+**Exposure:** Session token and agent ID. No API keys, no private keys.
+
+**Mitigation:** The session token expires in 24 hours. Revoke it from the dashboard immediately (Tier 2), or revoke the agent's EAS attestation directly from your wallet (Tier 3) for a permanent, sovereign kill that works even if AgentRoot is offline. The token is scoped to proxy access only, and the proxy does not expose key material in responses.
+
+### Dashboard Compromised (XSS, Supply Chain)
+
+**Threat:** Malicious JavaScript runs in the dashboard context.
+
+**Exposure:** Agent metadata, activity logs, and dashboard state. The attacker **cannot** see API keys (zero-knowledge ingestion on a separate origin).
+
+**Mitigation:** API keys are safe. Session tokens can be rotated. Kill switches can be triggered from the wallet (Tier 3) independently of the dashboard.
+
+### API Key Leaked from Upstream Provider
+
+**Threat:** A key stored in the vault is compromised at the provider side (e.g., a provider breach).
+
+**Exposure:** The specific provider key is compromised.
+
+**Mitigation:** Replace the key in the dashboard. Old keys are versioned for audit but no longer used. Only one provider is affected; other keys remain secure.
+
+### Operator Wallet Compromised
+
+**Threat:** An attacker gains access to the operator's Ethereum wallet.
+
+**Exposure:** The attacker could revoke attestations (Tier 3) or authenticate to the dashboard via SIWE.
+
+**Mitigation:** This is the highest-privilege compromise. Immediately revoke all agent attestations from the wallet to prevent the attacker from using them, then secure the wallet following standard key recovery procedures. Hardware wallets (Ledger, Trezor) significantly reduce this risk.
+
+### Network Interception (MITM)
+
+**Threat:** An attacker intercepts traffic between the agent and the proxy.
+
+**Exposure:** The attacker could see the session token in the Authorization header.
+
+**Mitigation:** All proxy communication is over TLS (HTTPS). The session token has a 24-hour TTL, limiting the window of exploitation.
+
+## Onchain Security Properties
+
+The EAS attestation on Base provides four properties that are independent of AgentRoot's infrastructure:
+
+1. **Immutability** — the attestation cannot be modified after creation
+2. **Public verifiability** — anyone can query the attestation and verify the agent's identity
+3. **Sovereign revocation** — only the attester (operator wallet) can revoke. Not AgentRoot, not anyone else.
+4. **Recoverable re-minting** — after a Tier 3 revocation, the agent's keypair and configuration remain in Vault. You can create a new attestation with the same agent data, bringing the agent back to life with a new onchain identity. The revoked attestation stays onchain as a permanent record. The new attestation proves the agent was restarted under your authority. Both are publicly verifiable.
+
+These properties survive even if AgentRoot's servers are all offline. The onchain identity remains verifiable and revocable from any Ethereum wallet interface.
+
+## Next Steps
+
+- [Architecture](architecture) — the component model
+- [Kill Switch](kill-switch) — the four tiers of revocation
+- [Dashboard Guide](dashboard) — managing security from the operator interface
+
+## Vendor and Subprocessor Details
+
+For the specific vendors that operate AgentRoot's encrypted vault, edge proxy, and supporting infrastructure — including their SOC 2, ISO 27001, and PCI attestations — see the [Trust Center](trust-center) and [Subprocessor List](subprocessors). To discuss our security posture with your security team or request a DPA, reach us at security@agentroot.com.

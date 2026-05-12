@@ -1,0 +1,187 @@
+---
+title: "Kill Switch"
+description: "Four independent mechanisms to stop an agent, from surgical to nuclear."
+---
+
+# Kill Switch
+
+AgentRoot provides four independent kill switch tiers. Each works independently — you don't need to escalate through them in order. Use whichever matches the situation.
+
+## Overview
+
+| Tier | Scope | Speed | Reversible | Requires |
+|------|-------|-------|------------|----------|
+| **Tier 1** | Single API | Instant | Yes | Dashboard |
+| **Tier 2** | Entire agent | Instant | Yes | Dashboard |
+| **Tier 3** | Everything (onchain) | ~30 seconds | No | Ethereum wallet |
+| **Auto-Kill** | Threshold-based | Instant | Yes (reset) | Pre-configured limits |
+
+## Tier 1: Toggle One API Off
+
+**What it does:** Disables a single API connection for an agent. The agent can still call other APIs — only the toggled provider is blocked.
+
+**How to use:** Dashboard → Agent detail → click the toggle next to any API connection.
+
+**How it works:** The toggle sets a per-API flag in Cloudflare KV. The proxy checks this flag before every request. If the flag is "disabled," the proxy returns `403 PROVIDER_DISABLED`.
+
+**When to use:**
+- You notice unexpected calls to a specific provider
+- A provider's API is behaving erratically and you want to cut it off
+- You want to restrict an agent to a subset of its configured APIs
+
+**Reversible:** Yes. Click the toggle again to re-enable.
+
+## Tier 2: Pause the Entire Agent
+
+**What it does:** Stops all API access for an agent. Every request through the proxy is rejected.
+
+**How to use:** Dashboard → Agent detail → click **Pause Agent**.
+
+**How it works:** Sets an agent-level flag in Cloudflare KV. The proxy checks this flag before any further processing. If the agent is paused, the proxy returns `403 AGENT_KILLED` immediately — it doesn't even check the session token.
+
+**When to use:**
+- The agent is behaving unexpectedly and you want to stop everything while you investigate
+- You're deploying a new version and want to ensure zero traffic during the transition
+- The "3am rogue agent" scenario — check from your phone, hit pause
+
+**Reversible:** Yes. Click **Resume Agent** when ready.
+
+## Tier 3: Onchain Revocation (Nuclear)
+
+**What it does:** Revokes the agent's EAS attestation on Base. This is permanent, sovereign, and independent of AgentRoot infrastructure.
+
+**How to use:** The dashboard provides a link that opens your wallet (MetaMask, Coinbase Wallet, etc.) to sign the revocation transaction. You can also revoke directly from any EAS interface or wallet that supports EAS — you don't need the AgentRoot dashboard.
+
+**How it works:** The EAS attestation's `revocationTime` is set to the current timestamp onchain. The proxy checks attestation status (via a cached view updated by The Graph subgraph) on every request. If revoked, the proxy returns `403 ATTESTATION_REVOKED`. This check is independent of Vault, the dashboard, and all AgentRoot infrastructure.
+
+**When to use:**
+- You need absolute certainty that the agent is dead
+- You've lost access to the dashboard but still have your wallet
+- AgentRoot's infrastructure is down and you need to kill the agent anyway
+- Compliance requires permanent, onchain proof that the agent was terminated
+
+**Reversible:** No — but recoverable. The revoked EAS attestation is marked as revoked forever. That onchain record is permanent and immutable. However, your agent's P-256 keypair and configuration still live in Vault. You can **re-mint** the agent: create a new EAS attestation with the same keypair and agent data, receive a new attestation UID, and the agent is back online. Same keys, same API connections, full history preserved. The old UID and the new UID are linked in the audit trail so the chain of custody is unbroken.
+
+Think of it as: kill it, fix the problem, re-mint it onchain. The revocation record proves the agent was stopped. The new attestation proves it was reborn under your authority. Both are onchain, both are permanent, both are verifiable by anyone.
+
+**Sovereign:** This is the most important property. Tier 3 works from any Ethereum wallet interface. You don't need AgentRoot's dashboard, API, servers, or permission. The revocation transaction is between your wallet and the EAS contract on Base. Not even AgentRoot can override it.
+
+**Social login users:** Sovereign Tier 3 requires an Ethereum wallet. If you signed in with Google or GitHub, AgentRoot can revoke the managed attestation on your behalf from the dashboard — but this is managed revocation, not sovereign. For true sovereign control, sign up with SIWE or migrate when the social-to-SIWE upgrade path ships.
+
+### Scope of the kill primitive
+
+AgentRoot can't unsign what's already signed; AgentRoot stops the *next* signature. An EIP-3009 payment authorization signed milliseconds before the owner's revoke can still be settled by the facilitator — no protocol can prevent that, and that's why x402 is decisive at settlement time. The blast radius is bounded by EOA balance and the per-tx cap encoded in the agent's attestation; the kill primitive eliminates all *future* signing authority instantly.
+
+This is the correct boundary, not a limitation. The kill primitive is "no more authority from this moment forward." That's what onchain revocation buys you, and it's what makes the sovereignty claim honest: the proxy refuses to sign for a revoked attestation, and no AgentRoot infrastructure can override that. For graceful exits where you don't want any in-flight authorization to settle against an empty EOA, use **kill-with-sweep** from the dashboard — the sweep transaction runs while the attestation is still live (so the proxy's normal gate passes), then the revocation transaction follows.
+
+## Auto-Kill: Usage Limits
+
+**What it does:** Automatically pauses an agent when it exceeds pre-configured usage thresholds.
+
+**How to configure:** Dashboard → Agent detail → **Usage Limits**. Set thresholds for:
+- Requests per day / month
+- Estimated cost per day / month
+- Data transfer limits
+
+**How it works:** The proxy maintains counters in D1 (Cloudflare's SQL database) and checks them on every request. When a threshold is exceeded, the proxy sets the Tier 2 pause flag automatically and returns `429 RATE_LIMITED`.
+
+**When to use:** Always. Set reasonable limits on every agent as a safety net. Auto-kill prevents runaway costs while you sleep.
+
+**Reversible:** Yes. Go to the dashboard, review the usage, and click **Reset Limits** to clear the counter and resume the agent.
+
+## What Your Agent Sees
+
+When a kill switch fires, the proxy returns a clear error response:
+
+```json
+{
+  "error": {
+    "code": "PROVIDER_DISABLED",
+    "message": "Provider 'openai' has been disabled for this agent",
+    "tier": 1
+  }
+}
+```
+
+The error codes by tier:
+
+| Tier | HTTP Status | Error Code |
+|------|-------------|------------|
+| Tier 1 | 403 | `PROVIDER_DISABLED` |
+| Tier 2 | 403 | `AGENT_KILLED` |
+| Tier 3 | 403 | `ATTESTATION_REVOKED` |
+| Auto-Kill | 429 | `RATE_LIMITED` |
+
+If you're using the SDK, these are caught as typed errors:
+
+```typescript
+try {
+  await ar.proxy({ ... });
+} catch (error) {
+  if (error.code === 'AGENT_KILLED') {
+    console.log('Agent has been paused. Check the dashboard.');
+    // Gracefully shut down or enter standby
+  }
+}
+```
+
+## Kill Switch Decision Tree
+
+```
+Is the problem with one specific API?
+  → Yes → Tier 1: toggle that API off
+  → No, the whole agent is misbehaving
+      → Is the situation urgent but potentially temporary?
+          → Yes → Tier 2: pause the agent
+          → No, this agent must be permanently stopped
+              → Tier 3: revoke onchain
+
+Did the agent exceed usage limits?
+  → Auto-kill already fired. Review and reset when ready.
+```
+
+## The 3am Scenario
+
+Your Mac Mini agent goes rogue at 3am. You're in bed with your phone. Here's the playbook:
+
+1. **Open the dashboard** on your phone → see the usage spike
+2. **Tier 2: Pause the agent** → one tap, instant, all API access stops
+3. **Review the logs** in the morning → see exactly what happened
+4. **Decide:** resume with adjusted limits, or Tier 3 revoke onchain from your wallet
+
+If you chose Tier 3 — the agent is dead onchain. But the next morning, after you've found and fixed the bug:
+
+5. **Re-mint the agent** → new EAS attestation, same keypair, same API keys, same config
+6. **New attestation UID** → linked to the old one in the audit trail
+7. **Agent is back online** → full history preserved, revocation record onchain as proof it was stopped
+
+Kill it. Fix it. Re-mint it. The onchain record tells the whole story: when it was born, when it was killed, why, and when it came back.
+
+At no point did you need SSH, a laptop, or a VPN. The kill switch works from any browser on any device. The re-mint works from the dashboard.
+
+## Verification
+
+After triggering any kill switch, verify it's working:
+
+```bash
+# This should return 403
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST https://proxy.agentroot.app/v1/chat/completions \
+  -H "Authorization: Bearer art_live_xxxxxxxxxxxx" \
+  -H "X-AgentRoot-ID: 0x7a3f..." \
+  -H "X-AgentRoot-Provider: openai" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o","messages":[{"role":"user","content":"test"}]}'
+```
+
+For Tier 3, you can also verify onchain:
+
+```
+Base block explorer → EAS contract → getAttestation(uid) → revocationTime != 0
+```
+
+## Next Steps
+
+- [Dashboard Guide](dashboard) — where to find the kill switch controls
+- [Security Model](security) — the broader threat model
+- [Architecture](architecture) — how kill switch state flows through the system
