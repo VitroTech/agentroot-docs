@@ -53,7 +53,9 @@ flowchart TB
 
 ## How a request flows
 
-Every API call follows the same path. The numbered steps map onto the diagram below.
+Every request your agent makes is validated against kill state and onchain identity *before* the upstream is touched, and the API key only exists in memory for the duration of one call. If any check fails, the upstream never hears from us.
+
+The numbered steps map onto the diagram below.
 
 ```mermaid
 sequenceDiagram
@@ -82,7 +84,7 @@ A single failure in any of the validation steps short-circuits the request. The 
 
 ## Key custody
 
-Three classes of secret live in the vault. Each has different rules.
+The vault is the only place your API keys exist — they're never written to disk by the dashboard, never logged by the proxy, never present in the agent runtime. Three classes of secret live there, each with different rules.
 
 **Customer API keys** (OpenAI, Anthropic, Stripe, etc.) are encrypted in transit by the secure-iframe key-capture component on a separate origin from the dashboard. The dashboard's same-origin policy makes it architecturally impossible for AgentRoot's frontend code to read the value. The vault stores ciphertext; decryption happens only inside the policy engine, only when resolving an authorized request, and only in process memory that's discarded after the response.
 
@@ -93,6 +95,8 @@ Three classes of secret live in the vault. Each has different rules.
 The full custody story — including HSM-backed unseal, two-person review for production access to the vault, and threat-by-threat mitigations — is in the [Security Model](security).
 
 ## Identity (EAS on Base)
+
+Your agent's identity lives on a public blockchain, not in our database. That's what gives you a Tier 3 kill switch that works even if AgentRoot's infrastructure is down — and a public, verifiable record of who controls what.
 
 An agent's identity is an EAS attestation on Base. The attestation records:
 

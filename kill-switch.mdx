@@ -22,7 +22,7 @@ Tier 1, Tier 2, and Auto-kill are all forms of Disable — they flip a flag the 
 
 **What it does:** flips a per-binding flag in proxy state. The proxy returns `403 PROVIDER_DISABLED` for any call from this agent to this provider. Other providers, same agent, still work.
 
-**Where the flag lives:** Cloudflare KV at the edge. Updates propagate globally in under five seconds.
+**Where the flag lives:** an edge-cached flag, refreshed continuously. Updates propagate globally in under five seconds.
 
 **Reversibility:** click the toggle again. The flag flips back; the next call succeeds.
 
@@ -34,7 +34,7 @@ For multi-agent shutoffs (one provider for *every* agent), Disable the *key* ins
 
 **What it does:** flips an agent-level flag. The proxy returns `403 AGENT_KILLED` for *every* call from this agent — it doesn't even resolve which provider was being called. Cheaper to enforce, faster to fail.
 
-**Where the flag lives:** same Cloudflare KV layer, separate key. Same global propagation window.
+**Where the flag lives:** same edge cache, separate flag. Same global propagation window.
 
 **Reversibility:** click Activate. Instant.
 
@@ -44,9 +44,9 @@ This is the most-used kill in practice. It's the "cut the strings" tug — you s
 
 ## Tier 3 — revoke onchain (sovereign)
 
-**What it does:** sets the EAS attestation's `revocationTime` to the current block timestamp on Base. The proxy checks attestation status on every request (via a cached subgraph view, refreshed continuously) and returns `403 ATTESTATION_REVOKED` for any agent whose attestation is revoked.
+**What it does:** sets the EAS attestation's `revocationTime` to the current block timestamp on Base. The proxy checks attestation status on every request and returns `403 ATTESTATION_REVOKED` for any agent whose attestation is revoked.
 
-**The critical property:** the revocation transaction is between *your wallet* and *the EAS contract on Base*. AgentRoot is not in the loop. You don't need our dashboard, our API, our subgraph, or our servers. If you have your wallet and a way to talk to Ethereum, you can kill the agent — even if AgentRoot has gone dark.
+**The critical property:** the revocation transaction is between *your wallet* and *the EAS contract on Base*. AgentRoot is not in the loop. You don't need our dashboard, our API, or our servers. If you have your wallet and a way to talk to Ethereum, you can kill the agent — even if AgentRoot has gone dark.
 
 **Sovereign mode (SIWE):** your wallet signs the revocation directly. AgentRoot's attester is uninvolved.
 
@@ -60,7 +60,7 @@ This is the most-used kill in practice. It's the "cut the strings" tug — you s
 
 ## Auto-kill — threshold-based
 
-**What it does:** the proxy maintains per-agent and per-key counters in Cloudflare D1. When a counter exceeds a configured threshold, the proxy automatically sets the Tier 2 flag on the offending agent (or the equivalent key-level flag) and returns `429 RATE_LIMITED` on subsequent calls.
+**What it does:** the proxy maintains per-agent and per-key counters at the edge. When a counter exceeds a configured threshold, the proxy automatically sets the Tier 2 flag on the offending agent (or the equivalent key-level flag) and returns `429 RATE_LIMITED` on subsequent calls.
 
 **Where to configure:** Dashboard → Agent → Auto-Kill Thresholds. Per-class quotas (Spend, Communication, Writes, Transactions, Provisioning, Destruction) are also set here — see [Action Classes](action-classes) for what each governs.
 
