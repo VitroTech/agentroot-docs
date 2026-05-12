@@ -85,6 +85,13 @@
       "github": "https://github.com/VitroTech"
     }
   },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/introduction",
+      "permanent": true
+    }
+  ],
   "seo": {
     "indexing": "navigable"
   },
