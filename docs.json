@@ -1,0 +1,96 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "AgentRoot",
+  "description": "Proxied API keys. Sovereign kill switch. Your agent never holds a secret.",
+  "logo": {
+    "light": "/logo/agentroot-logo.svg",
+    "dark": "/logo/agentroot-logo.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#2981FF",
+    "light": "#5BA0FF",
+    "dark": "#1A5FCC"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Dashboard",
+        "href": "https://ux.agentroot.app"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "https://ux.agentroot.app"
+    }
+  },
+  "navigation": {
+    "anchors": [
+      {
+        "anchor": "GitHub",
+        "icon": "github",
+        "href": "https://github.com/VitroTech"
+      },
+      {
+        "anchor": "SDK",
+        "icon": "npm",
+        "href": "https://www.npmjs.com/package/@agentroot/sdk"
+      }
+    ],
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "introduction",
+          "quickstart",
+          "quickstart-social",
+          "quickstart-siwe"
+        ]
+      },
+      {
+        "group": "Platform",
+        "pages": [
+          "architecture",
+          "dashboard",
+          "kill-switch",
+          "security"
+        ]
+      },
+      {
+        "group": "Developer",
+        "pages": [
+          "sdk",
+          "api-reference"
+        ]
+      },
+      {
+        "group": "Trust & Compliance",
+        "pages": [
+          "compliance",
+          "trust-center",
+          "subprocessors",
+          "vulnerability-disclosure"
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/AgentRoot",
+      "github": "https://github.com/VitroTech"
+    }
+  },
+  "seo": {
+    "indexing": "navigable"
+  },
+  "metadata": {
+    "og:site_name": "AgentRoot Docs",
+    "og:description": "Proxied API keys. Sovereign kill switch. Your agent never holds a secret.",
+    "twitter:site": "@AgentRoot"
+  }
+}
