@@ -34,14 +34,17 @@ curl -X POST 'https://proxy.agentroot.app/gmail/gmail/v1/users/me/messages/send'
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'gmail',
-      path: '/gmail/v1/users/me/messages/send',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/gmail/gmail/v1/users/me/messages/send', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "raw": "<base64-encoded MIME message>"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -69,5 +72,4 @@ The complete Gmail endpoint catalog is callable through the AgentRoot proxy usin
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Gmail routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

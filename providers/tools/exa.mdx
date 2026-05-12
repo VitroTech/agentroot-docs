@@ -35,15 +35,18 @@ curl -X POST 'https://proxy.agentroot.app/exa/search' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'exa',
-      path: '/search',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/exa/search', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "query": "agent governance frameworks",
   "numResults": 10
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -72,5 +75,4 @@ The complete Exa endpoint catalog is callable through the AgentRoot proxy using 
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Exa routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

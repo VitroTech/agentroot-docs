@@ -1,9 +1,9 @@
 ---
 title: "API Reference"
-description: "Raw HTTP reference for the AgentRoot proxy — for clients that don't use the SDK."
+description: "Raw HTTP reference for the AgentRoot proxy."
 ---
 
-This page covers the raw HTTP endpoints exposed by the AgentRoot proxy and dashboard API. For most use cases the [SDK](sdk) is the path of least resistance — but if you're calling from a language without an AgentRoot SDK, from a low-level service, or from a CI workflow, this is the reference.
+This page covers the raw HTTP endpoints exposed by the AgentRoot proxy and dashboard API. Two AgentRoot headers, your usual HTTP client, and the upstream path you'd already use — that's the entire integration surface.
 
 The proxy contract is the same as documented in **[Providers → Conventions](providers/conventions)**. This page is a leaner summary aimed at HTTP-only consumers; if anything here is ambiguous, the Conventions page is authoritative.
 
@@ -29,7 +29,6 @@ The upstream's own auth header (OpenAI's `Authorization: Bearer sk-...`, Stripe'
 
 | Header | Use |
 |---|---|
-| `X-AgentRoot-Provider` | Redundant with the URL path; set for audit-log clarity |
 | `X-AgentRoot-Idempotency-Key` | UUID for replay-safe retries on Writes and Transactions |
 | `X-AgentRoot-Class-Override` | Override the route's standing action class for this call only (tightening only) |
 
@@ -104,13 +103,13 @@ Returns:
 }
 ```
 
-The `ttl_seconds` value is the remaining lifetime of your session token. If it's under 600 seconds and you're not using the SDK, refresh from the dashboard or rotate the agent before the token expires.
+The `ttl_seconds` value is the remaining lifetime of your session token. If it's under 600 seconds, refresh from the dashboard or rotate the agent before the token expires.
 
 ## Authentication tokens
 
 Format: `art_live_xxxxxxxxxxxx`
 
-Session tokens are issued by the vault during agent registration and have a 24-hour TTL. They rotate automatically — the SDK handles this transparently. For raw HTTP clients, fetch a fresh token from the dashboard (or via the dashboard API documented separately) before the current one expires.
+Session tokens are issued by the vault during agent registration and have a 24-hour TTL. Fetch a fresh token from the dashboard (or via the dashboard API documented separately) before the current one expires.
 
 A revoked or expired token produces `401 TOKEN_EXPIRED` or `401 TOKEN_REVOKED` on the next request. The agent's EAS attestation UID never changes — only the session token does.
 
@@ -126,7 +125,6 @@ Both work as documented in **[Providers → Conventions](providers/conventions)*
 
 ## Related
 
-- **[SDK Reference](sdk)** — the TypeScript SDK that wraps this contract
 - **[Providers → Conventions](providers/conventions)** — the canonical proxy contract
 - **[Providers → Overview](providers/overview)** — the full catalog
 - **[Kill Switch](kill-switch)** — what each error code means at the lifecycle level

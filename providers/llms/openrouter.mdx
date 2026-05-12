@@ -40,11 +40,14 @@ curl -X POST 'https://proxy.agentroot.app/openrouter/api/v1/chat/completions' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'openrouter',
-      path: '/api/v1/chat/completions',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/openrouter/api/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "model": "openai/gpt-4o",
   "messages": [
     {
@@ -52,8 +55,8 @@ await ar.proxy({
       "content": "Hello"
     }
   ]
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -87,5 +90,4 @@ The complete OpenRouter endpoint catalog is callable through the AgentRoot proxy
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how OpenRouter routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

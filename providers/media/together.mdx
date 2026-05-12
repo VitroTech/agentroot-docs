@@ -40,11 +40,14 @@ curl -X POST 'https://proxy.agentroot.app/together/v1/chat/completions' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'together',
-      path: '/v1/chat/completions',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/together/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "model": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
   "messages": [
     {
@@ -52,8 +55,8 @@ await ar.proxy({
       "content": "Hello"
     }
   ]
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -87,5 +90,4 @@ The complete Together AI endpoint catalog is callable through the AgentRoot prox
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Together AI routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

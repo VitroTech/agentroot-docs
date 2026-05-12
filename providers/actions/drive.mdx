@@ -35,15 +35,18 @@ curl -X POST 'https://proxy.agentroot.app/drive/drive/v3/files' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'drive',
-      path: '/drive/v3/files',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/drive/drive/v3/files', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "name": "report.pdf",
   "mimeType": "application/pdf"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -72,5 +75,4 @@ The complete Google Drive endpoint catalog is callable through the AgentRoot pro
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Google Drive routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

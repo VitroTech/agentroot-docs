@@ -34,14 +34,17 @@ curl -X POST 'https://proxy.agentroot.app/discord/api/v10/channels/{channel_id}/
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'discord',
-      path: '/api/v10/channels/{channel_id}/messages',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/discord/api/v10/channels/{channel_id}/messages', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "content": "hello from AgentRoot"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -69,5 +72,4 @@ The complete Discord endpoint catalog is callable through the AgentRoot proxy us
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Discord routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

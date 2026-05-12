@@ -96,32 +96,37 @@ Each kill mechanism returns a structured error. The HTTP status is the first sig
 }
 ```
 
-The SDK maps these to typed errors:
+Handle them at the HTTP layer — the JSON body's `error.code` is the discriminator:
 
 ```typescript
-import { AgentRootError } from '@agentroot/sdk';
+const res = await fetch(`${process.env.AGENTROOT_PROXY}/openai/v1/chat/completions`, {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ /* ... */ }),
+});
 
-try {
-  await ar.proxy({ ... });
-} catch (e) {
-  if (e instanceof AgentRootError) {
-    switch (e.code) {
-      case 'AGENT_KILLED':
-      case 'ATTESTATION_REVOKED':
-        await gracefulShutdown();
-        break;
-      case 'PROVIDER_DISABLED':
-        await tryAlternateProvider();
-        break;
-      case 'RATE_LIMITED':
-        await backoffAndRetry(e.retryAfter);
-        break;
-    }
+if (!res.ok) {
+  const { error } = await res.json();
+  switch (error.code) {
+    case 'AGENT_KILLED':
+    case 'ATTESTATION_REVOKED':
+      await gracefulShutdown();
+      break;
+    case 'PROVIDER_DISABLED':
+      await tryAlternateProvider();
+      break;
+    case 'RATE_LIMITED':
+      await backoffAndRetry(res.headers.get('Retry-After'));
+      break;
   }
 }
 ```
 
-See [SDK Reference](sdk) for the full error catalog.
+See the [API Reference](api-reference) for the full error catalog.
 
 ## Verifying a kill fired
 
@@ -134,7 +139,6 @@ curl -s -o /dev/null -w "%{http_code}\n" \
   -X POST https://proxy.agentroot.app/openai/v1/chat/completions \
   -H "Authorization: Bearer $AGENTROOT_TOKEN" \
   -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
-  -H "X-AgentRoot-Provider: openai" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-4o","messages":[{"role":"user","content":"ping"}]}'
 ```
@@ -192,4 +196,3 @@ Important boundaries on what a kill can — and cannot — affect.
 - **[Operator Playbooks](playbooks)** — when to reach for which kill, in real scenarios
 - **[Action Classes](action-classes)** — per-class auto-kill thresholds
 - **[Architecture](architecture)** — how kill state propagates through the proxy
-- **[SDK Reference](sdk)** — handling kill-switch errors in agent code

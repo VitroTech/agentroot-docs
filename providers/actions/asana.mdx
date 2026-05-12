@@ -39,19 +39,22 @@ curl -X POST 'https://proxy.agentroot.app/asana/api/1.0/tasks' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'asana',
-      path: '/api/1.0/tasks',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/asana/api/1.0/tasks', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "data": {
     "name": "From the agent",
     "projects": [
       "<gid>"
     ]
   }
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -84,5 +87,4 @@ The complete Asana endpoint catalog is callable through the AgentRoot proxy usin
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Asana routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

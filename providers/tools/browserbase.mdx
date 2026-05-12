@@ -34,14 +34,17 @@ curl -X POST 'https://proxy.agentroot.app/browserbase/v1/sessions' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'browserbase',
-      path: '/v1/sessions',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/browserbase/v1/sessions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "projectId": "<id>"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -69,5 +72,4 @@ The complete Browserbase endpoint catalog is callable through the AgentRoot prox
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Browserbase routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

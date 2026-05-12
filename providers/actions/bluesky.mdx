@@ -39,19 +39,22 @@ curl -X POST 'https://proxy.agentroot.app/bluesky/xrpc/com.atproto.repo.createRe
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'bluesky',
-      path: '/xrpc/com.atproto.repo.createRecord',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/bluesky/xrpc/com.atproto.repo.createRecord', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "repo": "<did>",
   "collection": "app.bsky.feed.post",
   "record": {
     "text": "hello from AgentRoot",
     "createdAt": "2026-05-12T00:00:00Z"
   }
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -84,5 +87,4 @@ The complete Bluesky endpoint catalog is callable through the AgentRoot proxy us
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Bluesky routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

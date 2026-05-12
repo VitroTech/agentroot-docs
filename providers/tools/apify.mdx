@@ -38,18 +38,21 @@ curl -X POST 'https://proxy.agentroot.app/apify/v2/acts/{actor_id}/runs' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'apify',
-      path: '/v2/acts/{actor_id}/runs',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/apify/v2/acts/{actor_id}/runs', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "input": {
     "startUrls": [
       "https://example.com"
     ]
   }
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -81,5 +84,4 @@ The complete Apify endpoint catalog is callable through the AgentRoot proxy usin
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Apify routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

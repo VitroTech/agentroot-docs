@@ -37,17 +37,20 @@ curl -X POST 'https://proxy.agentroot.app/resend/emails' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'resend',
-      path: '/emails',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/resend/emails', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "from": "agent@example.com",
   "to": "user@example.com",
   "subject": "Hello",
   "html": "<p>hello from AgentRoot</p>"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -78,5 +81,4 @@ The complete Resend endpoint catalog is callable through the AgentRoot proxy usi
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Resend routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

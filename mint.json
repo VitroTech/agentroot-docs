@@ -30,11 +30,6 @@
       "name": "GitHub",
       "icon": "github",
       "url": "https://github.com/VitroTech"
-    },
-    {
-      "name": "SDK",
-      "icon": "npm",
-      "url": "https://www.npmjs.com/package/@agentroot/sdk"
     }
   ],
   "navigation": [
@@ -59,7 +54,6 @@
     {
       "group": "Developer",
       "pages": [
-        "sdk",
         "api-reference"
       ]
     },

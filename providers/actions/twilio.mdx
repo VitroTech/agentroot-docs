@@ -36,16 +36,19 @@ curl -X POST 'https://proxy.agentroot.app/twilio/2010-04-01/Accounts/{AccountSid
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'twilio',
-      path: '/2010-04-01/Accounts/{AccountSid}/Messages.json',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/twilio/2010-04-01/Accounts/{AccountSid}/Messages.json', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "To": "+15551234567",
   "From": "+15559876543",
   "Body": "hello from AgentRoot"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -75,5 +78,4 @@ The complete Twilio endpoint catalog is callable through the AgentRoot proxy usi
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Twilio routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

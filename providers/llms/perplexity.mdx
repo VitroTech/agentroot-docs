@@ -40,11 +40,14 @@ curl -X POST 'https://proxy.agentroot.app/perplexity/chat/completions' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'perplexity',
-      path: '/chat/completions',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/perplexity/chat/completions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "model": "llama-3.1-sonar-large-128k-online",
   "messages": [
     {
@@ -52,8 +55,8 @@ await ar.proxy({
       "content": "What's new in AI today?"
     }
   ]
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -87,5 +90,4 @@ The complete Perplexity endpoint catalog is callable through the AgentRoot proxy
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Perplexity routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

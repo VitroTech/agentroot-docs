@@ -36,16 +36,19 @@ curl -X POST 'https://proxy.agentroot.app/plaid/transactions/get' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'plaid',
-      path: '/transactions/get',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/plaid/transactions/get', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "access_token": "<token>",
   "start_date": "2026-01-01",
   "end_date": "2026-05-12"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -75,5 +78,4 @@ The complete Plaid endpoint catalog is callable through the AgentRoot proxy usin
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Plaid routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

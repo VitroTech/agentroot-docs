@@ -42,11 +42,14 @@ curl -X POST 'https://proxy.agentroot.app/google/v1beta/models/gemini-1.5-pro:ge
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'google',
-      path: '/v1beta/models/gemini-1.5-pro:generateContent',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/google/v1beta/models/gemini-1.5-pro:generateContent', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "contents": [
     {
       "parts": [
@@ -56,8 +59,8 @@ await ar.proxy({
       ]
     }
   ]
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -93,5 +96,4 @@ The complete Google Gemini endpoint catalog is callable through the AgentRoot pr
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Google Gemini routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

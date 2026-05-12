@@ -37,17 +37,20 @@ curl -X POST 'https://proxy.agentroot.app/firecrawl/v1/scrape' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'firecrawl',
-      path: '/v1/scrape',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/firecrawl/v1/scrape', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "url": "https://agentroot.app",
   "formats": [
     "markdown"
   ]
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -78,5 +81,4 @@ The complete Firecrawl endpoint catalog is callable through the AgentRoot proxy 
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Firecrawl routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

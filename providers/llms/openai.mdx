@@ -49,12 +49,17 @@ For the conventions every example on this page assumes — required headers, err
     ```
 
     ```typescript TypeScript
-    await ar.openai('/v1/chat/completions', {
+    await fetch('https://proxy.agentroot.app/openai/v1/chat/completions', {
       method: 'POST',
-      body: {
+      headers: {
+        Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+        'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         model: 'gpt-4o',
         messages: [{ role: 'user', content: 'Hello' }],
-      },
+      }),
     });
     ```
 
@@ -92,12 +97,17 @@ For the conventions every example on this page assumes — required headers, err
     ```
 
     ```typescript TypeScript
-    await ar.openai('/v1/embeddings', {
+    await fetch('https://proxy.agentroot.app/openai/v1/embeddings', {
       method: 'POST',
-      body: {
+      headers: {
+        Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+        'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         model: 'text-embedding-3-small',
         input: 'The Pinocchio Problem in one sentence.',
-      },
+      }),
     });
     ```
 
@@ -128,9 +138,14 @@ For the conventions every example on this page assumes — required headers, err
     ```
 
     ```typescript TypeScript
-    const r = await ar.openai('/v1/audio/speech', {
+    const r = await fetch('https://proxy.agentroot.app/openai/v1/audio/speech', {
       method: 'POST',
-      body: { model: 'tts-1', voice: 'alloy', input: 'Hello from AgentRoot' },
+      headers: {
+        Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+        'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ model: 'tts-1', voice: 'alloy', input: 'Hello from AgentRoot' }),
     });
     // r is a Response; pipe r.body to a file or stream
     ```
@@ -167,7 +182,10 @@ For the conventions every example on this page assumes — required headers, err
     form.append('model', 'whisper-1');
     await fetch('https://proxy.agentroot.app/openai/v1/audio/transcriptions', {
       method: 'POST',
-      headers: ar.getAuthHeaders(),
+      headers: {
+        Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+        'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+      },
       body: form,
     });
     ```
@@ -199,14 +217,19 @@ For the conventions every example on this page assumes — required headers, err
     ```
 
     ```typescript TypeScript
-    await ar.openai('/v1/images/generations', {
+    await fetch('https://proxy.agentroot.app/openai/v1/images/generations', {
       method: 'POST',
-      body: {
+      headers: {
+        Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+        'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         model: 'dall-e-3',
         prompt: 'A wooden puppet learning to code',
         n: 1,
         size: '1024x1024',
-      },
+      }),
     });
     ```
 
@@ -234,7 +257,13 @@ For the conventions every example on this page assumes — required headers, err
     ```
 
     ```typescript TypeScript
-    await ar.openai('/v1/files/file-abc123', { method: 'DELETE' });
+    await fetch('https://proxy.agentroot.app/openai/v1/files/file-abc123', {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+        'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+      },
+    });
     ```
 
     ```python Python
@@ -257,9 +286,12 @@ If you're using OpenAI's official client SDKs, set the base URL and pass AgentRo
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
-  baseURL: ar.getProxyUrl('openai') + '/v1',
+  baseURL: `${process.env.AGENTROOT_PROXY}/openai/v1`,
   apiKey: 'unused',
-  defaultHeaders: ar.getAuthHeaders(),
+  defaultHeaders: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+  },
 });
 
 const r = await openai.chat.completions.create({
@@ -299,5 +331,4 @@ r = client.chat.completions.create(
 
 - **[Conventions](../conventions)** — the AgentRoot proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how OpenAI endpoints classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK with OpenAI shortcuts
 - **[Anthropic](anthropic)** — sister page for Claude models

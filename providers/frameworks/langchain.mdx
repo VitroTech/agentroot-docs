@@ -19,7 +19,7 @@ For LLM calls within LangChain, configure the underlying client (OpenAI SDK, Ant
 - **Anthropic through AgentRoot** — [providers/llms/anthropic](../llms/anthropic)
 - **Other LLM providers** — see the [LLMs catalog](../llms/openai)
 
-For non-LLM external calls (Slack, Stripe, GitHub) that your LangChain tools make, use AgentRoot's `proxy()` from the [SDK](/sdk) or fetch directly through the proxy — see [Conventions](../conventions).
+For non-LLM external calls (Slack, Stripe, GitHub) that your LangChain tools make, fetch directly through the AgentRoot proxy — same two headers and base URL as every other proxied call. See [Conventions](../conventions).
 
 ## Action class governance
 
@@ -31,6 +31,5 @@ LangChain itself doesn't have an action class — it runs in your process. The c
 
 ## Related
 
-- **[SDK Reference](/sdk)** — the TypeScript SDK with built-in LangChain-compatible helpers
 - **[Conventions](../conventions)** — the proxy contract used by every framework integration
 - **[Operator Playbooks](/playbooks)** — incident response, applicable to any framework

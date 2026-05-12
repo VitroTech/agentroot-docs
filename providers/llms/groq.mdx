@@ -40,11 +40,14 @@ curl -X POST 'https://proxy.agentroot.app/groq/openai/v1/chat/completions' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'groq',
-      path: '/openai/v1/chat/completions',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/groq/openai/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "model": "llama-3.1-70b-versatile",
   "messages": [
     {
@@ -52,8 +55,8 @@ await ar.proxy({
       "content": "Hello"
     }
   ]
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -87,5 +90,4 @@ The complete Groq endpoint catalog is callable through the AgentRoot proxy using
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Groq routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

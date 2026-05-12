@@ -34,14 +34,17 @@ curl -X POST 'https://proxy.agentroot.app/linear/graphql' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'linear',
-      path: '/graphql',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/linear/graphql', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "query": "mutation { issueCreate(input: { title: \"From the agent\", teamId: \"<id>\" }) { success } }"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -69,5 +72,4 @@ The complete Linear endpoint catalog is callable through the AgentRoot proxy usi
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Linear routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

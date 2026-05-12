@@ -1,43 +1,4 @@
----
-title: "Deepgram"
-description: "Speech-to-text transcription, real-time and batch."
----
 
-Deepgram through AgentRoot. Your agent never holds the Deepgram API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
-
-## Setup
-
-1. Dashboard → **Connect** → Deepgram
-2. Paste your Deepgram API key into the secure iframe
-3. Bind the key to one or more agents
-4. Point your code at `https://proxy.agentroot.app/deepgram`
-
-For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
-
-## Action class
-
-Deepgram endpoints classify as **Spend** by default. See [Action Classes](/action-classes) for what governs this class and the relevant per-class auto-kill thresholds. To override per-route, see [Action Class Mapping](../action-class-mapping#overriding-classifications).
-
-## Calling Deepgram through AgentRoot
-
-Representative call — `POST /v1/listen`:
-
-<CodeGroup>
-```bash cURL
-curl -X POST 'https://proxy.agentroot.app/deepgram/v1/listen' \
-      -H "Authorization: Bearer $AGENTROOT_TOKEN" \
-      -H "X-AgentRoot-ID: $AGENTROOT_AGENT_ID" \
-      -H "Content-Type: application/json" \
-      -d '<binary audio data>'
-```
-
-```typescript TypeScript
-await ar.proxy({
-      provider: 'deepgram',
-      path: '/v1/listen',
-      method: 'POST',,
-      body: "<binary audio data>",
-    });
 ```
 
 ```python Python
@@ -63,5 +24,4 @@ The complete Deepgram endpoint catalog is callable through the AgentRoot proxy u
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Deepgram routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

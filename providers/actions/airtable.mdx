@@ -36,16 +36,19 @@ curl -X POST 'https://proxy.agentroot.app/airtable/v0/{base_id}/{table}' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'airtable',
-      path: '/v0/{base_id}/{table}',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/airtable/v0/{base_id}/{table}', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "fields": {
     "Name": "From the agent"
   }
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -75,5 +78,4 @@ The complete Airtable endpoint catalog is callable through the AgentRoot proxy u
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Airtable routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

@@ -35,15 +35,18 @@ curl -X POST 'https://proxy.agentroot.app/tavily/search' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'tavily',
-      path: '/search',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/tavily/search', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "api_key": "<auto-injected>",
   "query": "latest AgentRoot news"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -72,5 +75,4 @@ The complete Tavily endpoint catalog is callable through the AgentRoot proxy usi
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Tavily routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

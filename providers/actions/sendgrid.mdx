@@ -52,11 +52,14 @@ curl -X POST 'https://proxy.agentroot.app/sendgrid/v3/mail/send' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'sendgrid',
-      path: '/v3/mail/send',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/sendgrid/v3/mail/send', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "personalizations": [
     {
       "to": [
@@ -76,8 +79,8 @@ await ar.proxy({
       "value": "hello from AgentRoot"
     }
   ]
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -123,5 +126,4 @@ The complete SendGrid endpoint catalog is callable through the AgentRoot proxy u
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how SendGrid routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

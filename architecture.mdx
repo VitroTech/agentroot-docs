@@ -90,7 +90,7 @@ The vault is the only place your API keys exist — they're never written to dis
 
 **Agent Root Secret Keys (ARSK)** are P-256 keypairs generated *inside* the vault during agent registration. The private key never leaves the vault — not for backup, not for export, not for migration. The public key is recorded in the agent's EAS attestation, creating a verifiable link between the onchain identity and the vault-custodied private key.
 
-**Session tokens** (`art_live_xxx`) are the agent's runtime credential. 24-hour TTL, automatic rotation handled by the SDK. Scoped to a single agent. Cannot be extended by the agent or used to access other agents. If a token is compromised, the damage is bounded to a 24-hour window — and you can revoke it instantly from the dashboard, or revoke the underlying attestation from your wallet for a permanent kill.
+**Session tokens** (`art_live_xxx`) are the agent's runtime credential. 24-hour TTL, with refresh available from the dashboard before expiry. Scoped to a single agent. Cannot be extended by the agent or used to access other agents. If a token is compromised, the damage is bounded to a 24-hour window — and you can revoke it instantly from the dashboard, or revoke the underlying attestation from your wallet for a permanent kill.
 
 The full custody story — including HSM-backed unseal, two-person review for production access to the vault, and threat-by-threat mitigations — is in the [Security Model](security).
 
@@ -146,4 +146,3 @@ If the agent's environment is fully exposed, the attacker gets at most 24 hours 
 - **[Lifecycle](lifecycle)** — Mint, Disable, Kill, ReMint
 - **[Kill Switch](kill-switch)** — the four enforcement mechanisms in detail
 - **[Security Model](security)** — trust boundaries, threat mitigations, and incident response
-- **[SDK Reference](sdk)** — how the agent uses the three env vars

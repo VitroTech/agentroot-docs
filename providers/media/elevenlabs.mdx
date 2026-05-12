@@ -35,15 +35,18 @@ curl -X POST 'https://proxy.agentroot.app/elevenlabs/v1/text-to-speech/{voice_id
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'elevenlabs',
-      path: '/v1/text-to-speech/{voice_id}',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/elevenlabs/v1/text-to-speech/{voice_id}', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "text": "Hello from AgentRoot",
   "model_id": "eleven_multilingual_v2"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -72,5 +75,4 @@ The complete ElevenLabs endpoint catalog is callable through the AgentRoot proxy
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how ElevenLabs routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

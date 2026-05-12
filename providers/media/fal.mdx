@@ -34,14 +34,17 @@ curl -X POST 'https://proxy.agentroot.app/fal/fal-ai/flux/dev' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'fal',
-      path: '/fal-ai/flux/dev',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/fal/fal-ai/flux/dev', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "prompt": "a wooden puppet learning to code"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -69,5 +72,4 @@ The complete FAL endpoint catalog is callable through the AgentRoot proxy using 
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how FAL routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

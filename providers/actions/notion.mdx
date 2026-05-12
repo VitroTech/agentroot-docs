@@ -47,11 +47,14 @@ curl -X POST 'https://proxy.agentroot.app/notion/v1/pages' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'notion',
-      path: '/v1/pages',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/notion/v1/pages', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "parent": {
     "database_id": "<id>"
   },
@@ -66,8 +69,8 @@ await ar.proxy({
       ]
     }
   }
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -108,5 +111,4 @@ The complete Notion endpoint catalog is callable through the AgentRoot proxy usi
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Notion routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

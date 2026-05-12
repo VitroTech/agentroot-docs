@@ -35,14 +35,17 @@ curl -X POST 'https://proxy.agentroot.app/fireworks/inference/v1/chat/completion
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-  provider: 'fireworks',
-  path: '/inference/v1/chat/completions',
+await fetch('https://proxy.agentroot.app/fireworks/inference/v1/chat/completions', {
   method: 'POST',
-  body: {
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
     model: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
     messages: [{ role: 'user', content: 'Hello' }],
-  },
+  }),
 });
 ```
 
@@ -74,5 +77,4 @@ The complete Fireworks endpoint catalog is callable through the AgentRoot proxy 
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[OpenAI](openai)** — same OpenAI-compatible client pattern works for Fireworks
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

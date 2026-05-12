@@ -38,11 +38,14 @@ curl https://proxy.agentroot.app/custom-internal-refund-service-prod/v1/refunds 
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-  provider: 'custom-internal-refund-service-prod',
-  path: '/v1/refunds',
+await fetch('https://proxy.agentroot.app/custom-internal-refund-service-prod/v1/refunds', {
   method: 'POST',
-  body: { chargeId: 'ch_abc', amount: 500 },
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ chargeId: 'ch_abc', amount: 500 }),
 });
 ```
 

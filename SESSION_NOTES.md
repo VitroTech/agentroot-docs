@@ -9,6 +9,10 @@ The docs are connected to Mintlify (custom config in `docs.json`, custom domain 
 **Project repo:** `/Users/dhg/Documents/GitHub/agentroot-docs`
 **Operator workflow:** David commits and pushes from GitHub Desktop. The AI never runs `git commit` / `git push` / any write-side git command. When work is ready, the AI says "ready to commit in GitHub Desktop" and stops.
 
+## Decisions
+
+- **No AgentRoot SDK.** (2026-05-12) The project will not ship `@agentroot/sdk`. All proxied API examples use raw HTTP — `fetch()` in TypeScript, `requests` in Python, `curl` for shell. For provider-specific official SDKs (OpenAI, Anthropic, etc.) the pattern is: set `baseURL` to `${process.env.AGENTROOT_PROXY}/<provider>/<version>`, set `defaultHeaders` to `{ Authorization: 'Bearer ${AGENTROOT_TOKEN}', 'X-AgentRoot-ID': '${AGENTROOT_AGENT_ID}' }`. Do not reintroduce `ar.proxy()`, `ar.openai()`, `npx @agentroot/sdk init`, or any `@agentroot/sdk` import. The `sdk.mdx` page is gone, the npm anchor is gone, and `docs.json` / `mint.json` no longer list `sdk` in nav.
+
 ## What's done
 
 ### Round 1 — Restructure for narrative
@@ -23,7 +27,7 @@ The docs are connected to Mintlify (custom config in `docs.json`, custom domain 
 - Rewrote `kill-switch.mdx` — lifecycle nouns lead, tiers are technical sub-classification, "Kills do not unsign in-flight authorizations" boundary section
 - Rewrote `architecture.mdx` — opens with the agent's-eye view, two Mermaid diagrams (two-plane isolation flowchart + 11-step request-flow sequence)
 - Rewrote `dashboard.mdx` — restructured around four operator scenarios (onboarding, daily ops, triage, sleep)
-- Rewrote `sdk.mdx` — real 30-line customer-support agent example, full framework integrations (LangChain, CrewAI, OpenAI SDK direct, Anthropic SDK direct)
+- Rewrote `sdk.mdx` — real 30-line customer-support agent example, full framework integrations (LangChain, CrewAI, OpenAI SDK direct, Anthropic SDK direct). **[Superseded 2026-05-12 — see Decisions: No AgentRoot SDK.]**
 
 ### Round 3 — Providers catalog
 - Added top-level **Providers tab** in `docs.json` (alongside Documentation)
@@ -66,7 +70,6 @@ agentroot-docs/
 ├── playbooks.mdx                      # Six operator runbooks
 ├── kill-switch.mdx                    # Four mechanisms + Mermaid decision tree
 ├── security.mdx                       # Threat model and mitigations
-├── sdk.mdx                            # TypeScript SDK reference
 ├── api-reference.mdx                  # Lean HTTP-level reference
 ├── compliance.mdx                     # OWASP / EU AI Act / NIST mapping
 ├── trust-center.mdx                   # Security posture + roadmap
@@ -100,7 +103,7 @@ providers/
 └── wallets/   (4 pages: metamask, coinbase, rainbow, walletconnect)
 ```
 
-**Total content pages: 76** (22 top-level + 54 provider + 4 admin pages in providers/)
+**Total content pages: 75** (21 top-level + 54 provider + 4 admin pages in providers/) — `sdk.mdx` removed 2026-05-12
 
 ## David must personally verify before public ship
 
@@ -121,7 +124,6 @@ The Trust Center and Subprocessor list went from `[VERIFY — ...]` placeholders
 
 ### Other facts to spot-check
 - **Provider list (54 launch services)** — confirm the catalog matches what you actually proxy on day one. If a provider in the catalog isn't actually wired up, mark it "Coming soon" via a Mintlify badge or remove the page.
-- **AgentRoot SDK npm package name `@agentroot/sdk`** — used throughout sdk.mdx and example pages. Confirm it's the actual package, not a placeholder.
 - **`status.agentroot.app`, `proxy.agentroot.app`, `ux.agentroot.app`** — confirm all three subdomains are real.
 - **EAS schema fields on the agent attestation** — `architecture.mdx` says the attestation includes "agent public key, operator wallet, schema-defined policy fields (per-tx caps, scope flags, sub-agent permissions), revocationTime." Match against your actual EAS schema.
 
@@ -164,4 +166,4 @@ Pick from:
 
 ---
 
-*Last updated: 2026-05-12. Maintained by the AI helping David with the docs build. When you (the next session's AI) update this, replace this file with your own write-up of what changed.*
+*Last updated: 2026-05-12 (post SDK-removal sweep). Maintained by the AI helping David with the docs build. When you (the next session's AI) update this, replace this file with your own write-up of what changed.*

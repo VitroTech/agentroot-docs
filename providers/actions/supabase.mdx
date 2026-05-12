@@ -34,14 +34,17 @@ curl -X POST 'https://proxy.agentroot.app/supabase/rest/v1/{table}' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'supabase',
-      path: '/rest/v1/{table}',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/supabase/rest/v1/{table}', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "name": "From the agent"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -69,5 +72,4 @@ The complete Supabase endpoint catalog is callable through the AgentRoot proxy u
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Supabase routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

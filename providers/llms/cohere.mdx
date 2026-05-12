@@ -35,14 +35,17 @@ curl -X POST 'https://proxy.agentroot.app/cohere/v1/chat' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-  provider: 'cohere',
-  path: '/v1/chat',
+await fetch('https://proxy.agentroot.app/cohere/v1/chat', {
   method: 'POST',
-  body: {
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
     model: 'command-r-plus',
     message: 'Hello',
-  },
+  }),
 });
 ```
 
@@ -69,5 +72,4 @@ The complete Cohere endpoint catalog is callable through the AgentRoot proxy usi
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Cohere routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

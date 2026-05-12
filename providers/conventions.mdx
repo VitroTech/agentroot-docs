@@ -29,7 +29,6 @@ Optional but recommended:
 
 | Header | Value | Use |
 |---|---|---|
-| `X-AgentRoot-Provider` | `<provider>` | Redundant with the URL path; set it for clarity in audit logs |
 | `X-AgentRoot-Idempotency-Key` | UUID | For replay-safe retries on Writes / Transactions calls |
 
 Headers the upstream would normally require for auth (e.g. OpenAI's `Authorization: Bearer sk-...`, Stripe's `Authorization: Bearer sk_live_...`, Anthropic's `x-api-key`) are *not* sent by your agent. The proxy injects them from the vault.
@@ -77,7 +76,6 @@ The full code catalog:
 | 503 | `VAULT_UNAVAILABLE` | AgentRoot vault unreachable; fail-closed | yes (after status page resolves) |
 | 504 | `UPSTREAM_TIMEOUT` | The upstream API exceeded its timeout window | yes |
 
-For SDK error handling patterns, see [SDK → Error handling](/sdk).
 
 ## Streaming
 
@@ -109,5 +107,4 @@ For latency-sensitive applications, the proxy adds 30–80ms over a direct upstr
 
 - **[Overview](overview)** — the catalog landing page
 - **[Action Class Mapping](action-class-mapping)** — how endpoints classify
-- **[SDK Reference](/sdk)** — the TypeScript client that wraps this contract
 - **[API Reference](/api-reference)** — the raw HTTP endpoints

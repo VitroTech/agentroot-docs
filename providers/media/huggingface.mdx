@@ -34,14 +34,17 @@ curl -X POST 'https://proxy.agentroot.app/huggingface/models/{model}' \
 ```
 
 ```typescript TypeScript
-await ar.proxy({
-      provider: 'huggingface',
-      path: '/models/{model}',
-      method: 'POST',,
-      body: {
+await fetch('https://proxy.agentroot.app/huggingface/models/{model}', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.AGENTROOT_TOKEN}`,
+    'X-AgentRoot-ID': process.env.AGENTROOT_AGENT_ID!,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
   "inputs": "Hello"
-},
-    });
+}),
+});
 ```
 
 ```python Python
@@ -69,5 +72,4 @@ The complete Hugging Face endpoint catalog is callable through the AgentRoot pro
 
 - **[Conventions](../conventions)** — the proxy contract
 - **[Action Class Mapping](../action-class-mapping)** — how Hugging Face routes classify
-- **[SDK Reference](/sdk)** — the TypeScript SDK
 - **[Overview](../overview)** — the full provider catalog

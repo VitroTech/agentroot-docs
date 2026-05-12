@@ -18,13 +18,12 @@ Migration from social to SIWE without re-registering agents is in development. I
 
 ## Onboarding a new agent
 
-The first thing you'll do. Five clicks, two terminal commands, one proxied call.
+The first thing you'll do. Four clicks, one proxied call.
 
 1. **New Agent.** Provide a name and optional description. The vault generates a P-256 keypair; the EAS attestation is signed (your wallet in sovereign mode, AgentRoot's attester in managed mode); the agent is live.
-2. **Copy credentials.** Three values: `AGENTROOT_AGENT_ID`, `AGENTROOT_TOKEN`, `AGENTROOT_PROXY`. The "Copy All" button puts a ready-to-paste `.env` block on your clipboard.
-3. **Initialize the SDK.** From your agent's project directory: `npx @agentroot/sdk init`. The dashboard badge transitions from "Awaiting Init" to "Bound" within seconds.
-4. **Bind an API key.** Click **Add API Key**. Pick a provider, paste the key into the secure iframe (it goes straight to the vault — the dashboard never sees plaintext), label it. The dashboard never displays the value again.
-5. **Make your first call.** The wizard's last step shows a ready-to-run snippet in TypeScript, cURL, and Python. Run it. The activity stream shows the call within a second or two. You're live.
+2. **Copy credentials.** Three values: `AGENTROOT_AGENT_ID`, `AGENTROOT_TOKEN`, `AGENTROOT_PROXY`. The "Copy All" button puts a ready-to-paste `.env` block on your clipboard. Drop them into your agent's environment.
+3. **Bind an API key.** Click **Add API Key**. Pick a provider, paste the key into the secure iframe (it goes straight to the vault — the dashboard never sees plaintext), label it. The dashboard never displays the value again.
+4. **Make your first call.** The wizard's last step shows a ready-to-run snippet in cURL, TypeScript, and Python. Run it. The activity stream shows the call within a second or two. You're live.
 
 Full step-by-step is in [Quickstart](quickstart) (split by sign-in method).
 
