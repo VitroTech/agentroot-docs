@@ -1,0 +1,114 @@
+---
+title: "Action Classes"
+description: "The six categories of agent action AgentRoot governs — and why this is the thesis."
+---
+
+# Action Classes
+
+Every external thing your agent does falls into one of six categories. AgentRoot classifies, gates, and audits each one. This page explains the taxonomy and why it matters.
+
+## Spend is the visible dimension. It is not the only one.
+
+Cost-tracking proxies (Helicone, OpenRouter, every LLM gateway you've heard of) treat agent governance as a budget problem: count tokens, sum dollars, alert when the line goes up. That works for one class of risk — Spend — and ignores the other five.
+
+The thing your CFO worries about is your LLM bill. The thing your CEO will worry about is the agent that emailed every customer at 4am, deleted the staging database, or signed a $40k contract on Docusign without authorization. Those are different categories of harm. They need different governance.
+
+AgentRoot's classification is the answer.
+
+## The six classes
+
+### Spend
+
+LLM tokens, API fees, x402 micropayments, gas. Any call that costs you money on the upstream side, measured in dollars-per-call.
+
+**Examples:** OpenAI completions, Anthropic messages, Replicate inference jobs, gas paid to settle an x402 invoice.
+
+**Governance primitives:** per-call cap, daily budget, monthly budget, model whitelist.
+
+**What goes wrong without it:** $40,000 in OpenAI charges from a runaway loop. We've all seen the screenshot.
+
+### Communication
+
+Anything the agent sends to a human. Email, SMS, chat message, social post.
+
+**Examples:** Gmail send, Twilio SMS, Slack post, Discord message, Resend email, X (Twitter) post, Bluesky post.
+
+**Governance primitives:** rate limit per recipient, recipient allowlist, off-hours pause, mandatory human-in-the-loop for first contact.
+
+**What goes wrong without it:** the agent emails every contact in your CRM with the wrong subject line. Your reputation is the loss; the dollar cost is rounding error.
+
+### Writes
+
+Mutations to your own systems or third-party SaaS. Updates, inserts, edits.
+
+**Examples:** Notion page edit, Linear issue update, CRM record change, Airtable row insert, S3 object PUT, GitHub commit.
+
+**Governance primitives:** field-level allowlist, write rate limit, dry-run mode, two-key (agent + human) for protected resources.
+
+**What goes wrong without it:** the agent reorganizes your customer database to "improve efficiency."
+
+### Transactions
+
+Onchain signings, payments, contract calls, multisig votes. Anything that, once signed, you cannot unsend.
+
+**Examples:** ETH transfer, ERC-20 approve, multisig confirm, Uniswap swap, cross-chain bridge, NFT mint.
+
+**Governance primitives:** per-tx value cap, daily value cap, contract address allowlist, EOA balance ceiling, mandatory wallet co-sign for large amounts.
+
+**What goes wrong without it:** the agent approves an unlimited token allowance to a malicious contract. The funds are gone before you see the alert.
+
+### Provisioning
+
+Creating new resources — and therefore new attack surface.
+
+**Examples:** spin up a sub-agent, create a new API key, provision a database, register a domain, sign up for a SaaS trial, add an OAuth app.
+
+**Governance primitives:** sub-agent count cap, mandatory tagging, automatic time-bombed expiry, parent-agent inheritance of kill state.
+
+**What goes wrong without it:** one agent spawns 1,000 sub-agents, each with its own credentials, each invisible to your dashboard until the bill arrives.
+
+### Destruction
+
+DELETE, drop, purge, unsubscribe-all, revoke, archive, factory-reset.
+
+**Examples:** S3 object delete, database row drop, GitHub repo delete, Stripe subscription cancel, Mailchimp list purge, factory reset on connected hardware.
+
+**Governance primitives:** soft-delete-only mode, undo window, two-key required, mandatory snapshot before destructive call, hard pause on the entire Destruction class as a default-deny posture.
+
+**What goes wrong without it:** "I asked the agent to clean up old test data. It deleted the production user table." This one ends careers.
+
+## The 27/54 thesis
+
+Of AgentRoot's fifty-four launch services, exactly twenty-seven are action-class — that is, they fall into Communication, Writes, Transactions, Provisioning, or Destruction rather than Spend. Half. By design.
+
+Most agentic-infra products are built around the LLM call: count the tokens, optimize the routing, return the response. That covers the first column. The other five columns — half of all the things your agent does, and the half that contains every catastrophic outcome — are unaddressed by anyone else.
+
+AgentRoot is built around the proxy first and the LLM second. Spend governance is a feature; action-class governance is the architecture.
+
+## Per-class kill primitives
+
+Each class has its own kill semantics, in addition to the global kill switch tiers documented in [Kill Switch](kill-switch).
+
+| Class | Default posture | Operator override | Auto-kill triggers |
+|---|---|---|---|
+| Spend | Allow with cap | Per-model allowlist | $/day, $/month, $/call |
+| Communication | Allow with rate limit | Recipient allowlist | sends/hour, off-hours pause |
+| Writes | Allow | Field/table allowlist | writes/min, dry-run mode |
+| Transactions | Allow with cap | Address allowlist | $/tx, $/day, EOA balance floor |
+| Provisioning | Allow with count cap | Mandatory tagging | sub-agents/hour |
+| Destruction | **Deny by default** | Per-resource allowlist | always logs; HITL required |
+
+Destruction is deny-by-default for a reason. The cost of a false negative on a DELETE is unbounded. The cost of a false positive (the agent has to ask permission) is one extra round trip. Pick the asymmetry.
+
+## How classification works
+
+Every proxied call is classified at the proxy layer based on the upstream endpoint and HTTP method. `POST /v1/chat/completions` against OpenAI is Spend. `POST /messages` against Slack is Communication. `DELETE /repos/{owner}/{repo}` against GitHub is Destruction. The classification is part of the audit log on every call, queryable from the dashboard or via the read-only audit endpoint.
+
+Custom upstreams (the `custom` provider) classify into Writes by default. Operators can override the classification on a per-route basis from the dashboard.
+
+## Where to read more
+
+- **[Lifecycle](lifecycle)** — how an agent moves through Mint, Disable, Kill, ReMint, and how class-level kills interact with whole-agent kills
+- **[Kill Switch](kill-switch)** — the four global tiers (Tier 1 per-API, Tier 2 per-agent, Tier 3 onchain, Auto-Kill thresholds)
+- **[Dashboard Guide](dashboard)** — where to set per-class limits and review per-class activity
+- **[API Reference](api-reference)** — the headers and error codes a class-level kill produces

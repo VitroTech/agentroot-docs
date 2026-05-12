@@ -1,0 +1,145 @@
+---
+title: "Lifecycle"
+description: "Mint, Disable, Kill, ReMint — the states every agent and key moves through."
+---
+
+# Lifecycle
+
+Every agent in AgentRoot moves through four states. Every key moves through three. This page is the canonical reference for both — what each transition does, who can trigger it, what it costs, and what's reversible.
+
+If you only learn one thing from these docs, learn the lifecycle vocabulary. It's the noun system the dashboard, the SDK, and the audit log all use.
+
+## Agents have four states
+
+```
+              Mint                 Disable
+            ────────►            ────────►
+   nothing            Active                Paused
+            ◄────────            ◄────────
+              Kill                 Activate
+              ▼
+            Killed ──── ReMint ──► Active (new attestation, same agent_id)
+```
+
+### Mint
+
+**What it does:** creates a new agent. Vault generates a P-256 keypair (private key never leaves the vault). The dashboard or your wallet signs an EAS attestation onchain that records the agent's public key and operator identity. The attestation UID becomes the agent's `agent_id`.
+
+**Who triggers it:** the operator, from the dashboard.
+
+**Cost:** in managed mode, AgentRoot pays the gas. In sovereign (SIWE) mode, your wallet pays Base gas — typically less than a cent.
+
+**Reversible:** by Disable (pause) or Kill (revoke). The keypair persists in the vault until the agent is hard-deleted.
+
+**The result:** an `Active` agent. The proxy will accept calls signed with this agent's session token.
+
+### Disable
+
+**What it does:** pauses every API the agent reaches. The proxy returns `403 AGENT_KILLED` on every request. Bindings stay intact — the agent is still registered, the keys are still in the vault, the EAS attestation is still live.
+
+**Who triggers it:** the operator, from the dashboard. Or auto-kill, when usage thresholds are crossed.
+
+**Cost:** none. No onchain transaction.
+
+**Reversible:** instantly. Click Activate.
+
+**Use it for:** "something is wrong, stop everything while I figure out what." This is the 3am tap on the dashboard.
+
+### Kill
+
+**What it does:** revokes the EAS attestation onchain. The attestation's `revocationTime` is set to the current block timestamp. The proxy checks attestation status on every request and rejects revoked agents with `403 ATTESTATION_REVOKED`. The check is independent of the vault, the dashboard, and all AgentRoot infrastructure — even if AgentRoot is down, a revoked attestation stays revoked.
+
+**Who triggers it:** the operator. In sovereign (SIWE) mode, directly from your wallet against the EAS contract on Base — no AgentRoot dashboard required, no AgentRoot API required, no AgentRoot servers required. In managed mode, from the dashboard, with AgentRoot's attester signing the revocation on your behalf.
+
+**Cost:** sovereign mode pays Base gas (less than a cent). Managed mode is included.
+
+**Reversible:** **no.** The revocation is permanent and onchain. But the agent is **recoverable** — see ReMint.
+
+**Use it for:** "this agent must not act again under this identity." Compromised credentials. Failed deployment that signed something it shouldn't have. End-of-life. Compliance teardown.
+
+### ReMint
+
+**What it does:** creates a new EAS attestation under the *same* `agent_id` lineage. The vault keypair, API keys, bindings, and audit history all carry forward. The new attestation has a new UID; the old (revoked) UID stays onchain as permanent record. A `uid_lineage` chain links every incarnation.
+
+**Who triggers it:** the operator, after a Kill, from the dashboard.
+
+**Cost:** Base gas (sovereign) or included (managed).
+
+**The result:** the agent is back online. New attestation, same soul. Same keys, same bindings, same dashboard view, same name. The audit trail tells the whole story: born, killed, reborn under your authority.
+
+**Use it for:** post-incident recovery. Kill the agent in anger; ReMint it after you've fixed the bug.
+
+> "Agents have a half-life. Karma is forever."
+
+The kill record is onchain. The new attestation is onchain. Both are publicly verifiable. The chain of custody is unbroken — and unblockable.
+
+## Keys have three states
+
+API keys (the credentials your agent uses to talk to OpenAI, Stripe, Slack, etc.) have a separate, simpler lifecycle.
+
+```
+   Activate      Disable      Activate      Delete
+  ─────────►  ◄─────────  ─────────► ────────►
+        Active            Disabled            (gone)
+```
+
+### Activate
+
+The default state when a key is added. The proxy will inject this key into outbound requests when any bound agent calls this provider.
+
+### Disable
+
+Flip a flag on the key. Every bound agent — possibly hundreds — gets `403 PROVIDER_DISABLED` on the next call until you re-Activate. **One click stops 100 agents.** The scale primitive: kill at the key level, not the agent level, when the failure mode is provider-shaped rather than agent-shaped.
+
+**Use it for:** "Anthropic is having an outage and our agents are looping on retries." "We just discovered our OpenAI key was leaked." "We're rotating Stripe and need every agent to pause until the new key is in."
+
+### Delete
+
+Remove the key from the vault entirely. Vault ciphertext is purged. Bindings to this key resolve to "no key" — bound agents need a new binding to resume calling that provider.
+
+Reversible only by re-adding the key (which becomes a new key with a new internal ID, even if the upstream value is identical).
+
+## Decision matrix
+
+| Situation | Right move | Tier |
+|---|---|---|
+| One provider is misbehaving for one agent | Tier 1 — toggle the binding off | 1 |
+| One provider is misbehaving for everyone | Disable the key | n/a (key-level) |
+| Whole agent is misbehaving | Disable the agent | 2 |
+| Whole agent must never act again under this identity | Kill (revoke onchain) | 3 |
+| Killed agent needs to come back | ReMint | n/a |
+| Spend / rate threshold crossed | Auto-kill already disabled the agent; review and Activate | auto |
+
+## Auto-guardrails interact with the lifecycle
+
+You can set per-agent or per-key thresholds: spend per day, request rate, error rate, action-class quota (e.g. "no more than 5 Destruction calls per hour"). When a threshold breaches, AgentRoot automatically Disables the offending entity — agent, key, or both — and surfaces an alert. You don't lose data. You don't lose state. You just wake up to a paused agent and a clear log entry instead of a burned-down house.
+
+See [Action Classes](action-classes) for per-class auto-kill triggers.
+
+## What survives a Kill
+
+The vault keypair. Every API key bound to the agent. The agent's name, description, dashboard configuration. The full audit log. The `uid_lineage` chain.
+
+What does *not* survive: the `agent_id` (changes after ReMint, but the lineage chain links them) and the EAS attestation UID (the old one is revoked forever; the new one is freshly minted).
+
+## What survives a Disable
+
+Everything. Disable is a flag, not a state migration.
+
+## How the lifecycle interacts with the kill switch
+
+The four kill-switch tiers in [Kill Switch](kill-switch) are mostly lifecycle transitions in disguise:
+
+- **Tier 1 (per-API toggle)** is a key-level Disable scoped to one binding
+- **Tier 2 (pause agent)** is an agent-level Disable
+- **Tier 3 (onchain revoke)** is an agent-level Kill
+- **Auto-kill** is an automated Tier 1 or Tier 2 triggered by threshold breach
+
+The lifecycle is the noun system. The kill switch is the verb system. They describe the same machine from two angles.
+
+## Next
+
+- **[Action Classes](action-classes)** — what kinds of action AgentRoot governs
+- **[Quickstart](quickstart)** — Mint your first agent
+- **[Kill Switch](kill-switch)** — the operator-facing playbook for each transition
+- **[Architecture](architecture)** — what happens under the hood at each transition

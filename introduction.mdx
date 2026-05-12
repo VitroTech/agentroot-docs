@@ -1,90 +1,71 @@
 ---
 title: "Introduction"
-description: "What is AgentRoot, who it's for, and the core concepts."
+description: "What AgentRoot is, the problem it solves, and how to read these docs."
 ---
 
 # Introduction
 
-AgentRoot is an identity, access control, and API proxy platform for autonomous AI agents. It gives operators a single registration that provides onchain identity, managed API proxy, granular kill switches, and full activity logging.
+Your agent is one prompt injection away from emptying your Stripe account, deleting your production database, and posting an apology in #general — using credentials it found in `.env`. The agent never needed to be malicious. It just needed to follow instructions you didn't write.
 
-**One registration. Every API. Full control. Instant kill.**
+This is the agentic security problem in one sentence. AgentRoot is the answer.
 
-## The Problem
+## The shape of the problem
 
-AI agents make thousands of API calls — to LLMs, data feeds, exchanges, SaaS tools. Today, operators paste API keys into `.env` files that any plugin can read. There's no per-agent visibility, no granular access control, and no way to instantly stop a rogue agent at 3am without SSH-ing into a server.
+Modern agents act at machine speed across dozens of APIs. A customer support agent calls Slack to message a user, Stripe to issue a refund, your database to update a record, Gmail to send a follow-up, and an LLM to generate the message. Five providers, five API keys, five blast radii — and they all live in the same `.env` file the agent reads on startup.
 
-AgentRoot fixes this by inserting a proxy layer between your agents and the APIs they call. Your keys never touch the agent runtime. Every call is logged. Every API can be toggled on or off. And if something goes wrong, you have a kill switch — from your dashboard, your phone, or your Ethereum wallet.
+When something goes wrong at 3am, the operator has three bad options:
 
-## Who It's For
+1. SSH into the box and `kill -9` the process (assuming SSH still works)
+2. Rotate every API key in every provider dashboard (assuming you can reach a laptop)
+3. Watch the spend graph until morning
 
-**Operators** are people or companies that deploy AI agents. You use the AgentRoot dashboard to register agents, manage API keys, monitor activity, and control access. You don't need to write code — the dashboard handles everything.
+None of these scale, and the third one is what most teams actually do.
 
-**Developers** build agent systems and integrate AgentRoot into their workflows. You use the SDK to authenticate agents, route API calls through the proxy, and handle session tokens. The SDK is a lightweight TypeScript library.
+## What AgentRoot does
 
-## Core Concepts
+AgentRoot puts a proxy between your agent and every API it calls. The agent never holds a key. Every call is logged. Every API can be paused independently. The whole agent can be killed instantly. And the kill switch lives onchain — in a place your agent literally cannot reach, no matter how clever it gets.
 
-### Agent
+The agent's entire integration is three environment variables:
 
-An agent is a registered AI system that makes API calls through the AgentRoot proxy. Each agent has a unique onchain identity (EAS attestation), a cryptographic keypair (P-256), and a session token for authenticating with the proxy. Agents never hold API keys.
-
-### Operator
-
-The person or company that registered the agent. The operator controls the agent's access, holds the kill switch, and owns the onchain attestation from their Ethereum wallet.
-
-### Proxy
-
-The Cloudflare Worker at `proxy.agentroot.app` that sits between your agent and upstream APIs. It validates the agent's session token, injects the correct API key from Vault, forwards the request, logs everything, and returns the response. Sub-100ms latency at the edge.
-
-### Vault
-
-HashiCorp Vault stores all secrets: API keys (encrypted, versioned), P-256 keypairs (private key never exported), and session tokens. If Vault is unavailable, the system fails closed — no requests are processed.
-
-### EAS Attestation
-
-An immutable onchain record on Base (Coinbase L2) that contains the agent's public key and links it to the operator's wallet. This is the root of trust. It can be verified by anyone, and revoked only by the operator — not even AgentRoot can override it.
-
-### Kill Switch
-
-Four independent mechanisms to stop an agent, from surgical to nuclear. Toggle one API off. Pause the whole agent. Revoke the onchain attestation. Or let auto-kill triggers fire based on usage limits. Details in the [Kill Switch guide](kill-switch).
-
-### Session Token
-
-A short-lived credential (format: `art_live_xxxxxxxxxxxx`) issued by Vault with a 24-hour TTL. This is what the agent uses to authenticate with the proxy. If a token is compromised, it expires automatically in 24 hours. You can also kill it immediately from the dashboard, or revoke the agent's EAS attestation onchain from your wallet — a sovereign kill that works even if AgentRoot is offline. The underlying identity is unaffected.
-
-## How It Works (30-Second Version)
-
-```
-1. Operator registers an agent → gets onchain EAS attestation + session token
-2. Operator adds API keys → keys are encrypted and stored in Vault
-3. Agent makes API calls → sends requests to proxy.agentroot.app
-4. Proxy validates token → injects API key → forwards to upstream → logs everything
-5. Operator monitors → dashboard shows all activity per-agent, per-API
-6. Something goes wrong → kill switch stops the agent instantly
-```
-
-The agent's `.env` file contains only three values:
-
-```
-AGENTROOT_AGENT_ID=0xABC123...
-AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx
+```bash
+AGENTROOT_AGENT_ID=eas:0x8a1f...c3d7
+AGENTROOT_TOKEN=eyJhbGci...           # auto-rotating, 24h
 AGENTROOT_PROXY=https://proxy.agentroot.app
 ```
 
-No API keys. No private keys. No secrets that matter if leaked beyond the token's 24-hour TTL.
+No API keys. No private keys. No secrets that matter if the agent is compromised beyond the token's 24-hour TTL.
 
-## What AgentRoot Is Not
+## Why this isn't just a smarter cost tracker
 
-AgentRoot is **not** an agent framework. It doesn't help you build agents — use LangChain, CrewAI, AutoGPT, or whatever you prefer. AgentRoot sits underneath, securing the API access layer regardless of which framework you use.
+Spend is the visible dimension. It's not the only one. AgentRoot governs *every* external action your agent takes — not just the ones that show up on a credit-card statement. We classify every proxied call into one of six action categories: Spend, Communication, Writes, Transactions, Provisioning, Destruction. Twenty-seven of our fifty-four launch services are action-class — exactly half. That's the thesis in data form: AgentRoot's differentiated value is governing what your agent *does*, not metering what it *thinks*.
 
-AgentRoot is **not** a payment system. It doesn't handle agent-to-agent payments or micropayments. It's the identity and access control layer that works alongside payment protocols.
+See [Action Classes](action-classes) for the full taxonomy.
 
-AgentRoot is **not** custodial in the Web3 sense. Your onchain attestation lives on Base (Ethereum L2). You control it from your wallet. We manage the Vault and proxy infrastructure, but the root of trust belongs to you.
+## Why onchain matters
 
-## Next Steps
+A centralized kill switch — an HTTP call to revoke access — has a race condition. A capable agent can intercept the call, revoke the revoker, or spin up a replacement before shutdown completes. An onchain EAS revocation is different. The agent can't front-run a wallet signature it doesn't hold. It can't modify the EAS contract. It can't economically censor a transaction across Ethereum's validator set. The kill switch lives in a computational domain the agent literally cannot reach.
 
-- [Quickstart](quickstart) — register your first agent in 5 minutes
-- [Architecture](architecture) — understand the security model
-- [Dashboard Guide](dashboard) — manage agents and API keys
-- [SDK Reference](sdk) — integrate AgentRoot into your agent code
-- [Kill Switch](kill-switch) — understand the four tiers of revocation
-- [Security Model](security) — trust boundaries and threat mitigations
+Your kill authority survives even if AgentRoot goes down. That's what "root" means.
+
+## How to read these docs
+
+The docs follow a deliberate path. Read in order if you're new:
+
+1. **[Action Classes](action-classes)** — the six categories AgentRoot governs, and why this is the thesis
+2. **[Lifecycle](lifecycle)** — Mint, Disable, Kill, ReMint. The states every agent and key moves through
+3. **[Quickstart](quickstart)** — pick a sign-in method and ship your first proxied call in under five minutes
+4. **[Architecture](architecture)** — the two-plane isolation model, vault custody, and how a request flows
+5. **[Kill Switch](kill-switch)** — the four mechanisms to stop an agent, from surgical to nuclear
+6. **[SDK Reference](sdk)** — the TypeScript SDK, framework integrations, and error handling
+7. **[API Reference](api-reference)** — raw HTTP endpoints if you're not using the SDK
+8. **[Trust Center](trust-center)** — security posture, subprocessors, and our compliance roadmap
+
+If you're a developer who wants code first, jump straight to [Quickstart](quickstart). If you're an operator deciding whether AgentRoot fits your security posture, read [Action Classes](action-classes), [Lifecycle](lifecycle), and the [Trust Center](trust-center) in that order.
+
+## What AgentRoot is not
+
+AgentRoot is not an agent framework. Use LangChain, CrewAI, AutoGPT, OpenClaw, your own runtime — anything that makes HTTP requests works. AgentRoot sits underneath, governing what the framework does at the network boundary.
+
+AgentRoot is not a payment system. It governs payments — including x402 micropayments — but it doesn't issue them.
+
+AgentRoot is not custodial in the Web3 sense. The onchain attestation lives on Base. You control it from your wallet (or, in managed mode, from the dashboard). The vault holds your API keys; the chain holds your authority. We hold neither.

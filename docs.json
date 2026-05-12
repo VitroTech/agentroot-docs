@@ -47,6 +47,8 @@
         "group": "Getting Started",
         "pages": [
           "introduction",
+          "action-classes",
+          "lifecycle",
           "quickstart",
           "quickstart-social",
           "quickstart-siwe"
