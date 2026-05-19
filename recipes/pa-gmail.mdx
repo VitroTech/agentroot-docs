@@ -1,0 +1,175 @@
+---
+title: "PA Recipe — Gmail via IMAP/SMTP"
+description: "End-to-end setup for giving a Principal Agent its own Gmail identity for autonomous read and send, without OAuth, without CASA."
+status: draft
+draft_reason: "Pending Pablo's IMAP/SMTP proxy implementation on the secure worker. URLs and payload shapes below are the intended contract; finalize once code lands. Do NOT publish to mintlify (not yet listed in docs.json)."
+related:
+  - ../architecture
+  - ../action-classes
+  - ../playbooks
+  - ../providers/actions/gmail
+created: 2026-05-18
+updated: 2026-05-18
+---
+
+This recipe sets up a Principal Agent (PA) with its own Gmail mailbox for both inbound (IMAP) and outbound (SMTP), routed entirely through AgentRoot. The PA reads its inbox, replies to threads, and sends new mail — all without holding upstream credentials, and without AgentRoot needing any Google OAuth scope.
+
+This is the V1 Gmail-for-PAs pattern. The alternative — Google OAuth with `gmail.modify` — is Restricted-tier and triggers a CASA audit at launch. App-password-over-IMAP/SMTP avoids that gate entirely and gives the agent the same functional capability.
+
+## What this recipe is not
+
+This is the **Principal Agent** recipe — the PA has its own identity (`<pa-name>@agentroot.app`), its own EOA wallet, and its own Gmail face. If you want an agent that acts on **your** Gmail using **your** OAuth grant, see [providers/actions/gmail](../providers/actions/gmail) for the OAuth-based pattern.
+
+## Prerequisites
+
+- A Google Workspace tenant on a domain you own (`agentroot.app` in our examples; substitute yours).
+- Super admin access to the Workspace tenant — you'll provision the PA's workspace user and enforce 2SV on it.
+- App passwords enabled at the org level. Confirm in `admin.google.com → Security → 2-Step Verification → Application-Specific Passwords`. Some Workspace policies disable this by default; enable it before proceeding.
+- A PA wallet (EOA in Vault) already minted for this agent in AgentRoot. The Gmail binding attaches to the PA identity.
+- Your phone with Google Authenticator (or any TOTP app) — required for the one-time 2SV setup per PA.
+
+## Setup
+
+### 1. Provision the workspace user
+
+In `admin.google.com → Directory → Users → Add new user`, create `<pa-name>@agentroot.app` (e.g., `athena@agentroot.app`). Set a temporary password — you'll only use it once.
+
+### 2. Sign in as the PA and enable 2SV
+
+Open a fresh incognito window. Sign in to `myaccount.google.com` with the PA's email and temp password. Google forces a password change on first login — set a real password and store it in your password manager.
+
+Navigate to `Security → 2-Step Verification → Turn On`. Pick **Authenticator app** as the method. Scan the QR code with the Google Authenticator app on your phone — the PA now has an entry in your Authenticator alongside any other accounts.
+
+While you're there, generate 10 **backup codes** and store them in your password manager. You'll likely never need them, but they're the break-glass recovery if you lose your phone.
+
+### 3. Generate the app password
+
+Still in the PA's incognito session, navigate to `myaccount.google.com/apppasswords`. The page only appears once 2SV is on. Select "Mail" and a custom name like "AgentRoot Proxy." Google generates a 16-character app password. Copy it.
+
+### 4. Bind the credential to the PA in AgentRoot
+
+In the AgentRoot dashboard (your normal session — you don't need to be signed in as the PA in AR), open the PA's detail page → **Bindings** → **Add Gmail**. Paste:
+
+- **Address:** `<pa-name>@agentroot.app`
+- **App password:** the 16-character string from step 3
+
+Click **Save**. AgentRoot stores `(address, app_password)` in Vault, scoped to this PA's binding slot. The credential is never visible to the agent container.
+
+### 5. Close incognito
+
+You'll never need to touch the PA's 2SV again unless you rotate the app password. The PA's day-to-day Gmail traffic now runs through AgentRoot.
+
+## Agent code
+
+The agent reaches Gmail through AgentRoot's proxy. Two routes — one for inbox poll, one for send.
+
+<CodeGroup>
+```typescript TypeScript
+const PROXY = process.env.AGENTROOT_PROXY!;
+const TOKEN = process.env.AGENTROOT_TOKEN!;
+const AGENT = process.env.AGENTROOT_AGENT_ID!;
+
+// Poll the inbox for unread messages.
+async function checkInbox() {
+  const res = await fetch(`${PROXY}/gmail/inbox?unread=true`, {
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-AgentRoot-ID": AGENT,
+    },
+  });
+  return res.json(); // array of { id, threadId, from, subject, date, snippet }
+}
+
+// Send a new email.
+async function sendMail({ to, subject, body }) {
+  return fetch(`${PROXY}/gmail/send`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-AgentRoot-ID": AGENT,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ to, subject, body }),
+  });
+}
+
+// Reply in-thread (preserves Gmail threading via In-Reply-To headers).
+async function replyToThread({ threadId, body }) {
+  return fetch(`${PROXY}/gmail/reply/${threadId}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-AgentRoot-ID": AGENT,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ body }),
+  });
+}
+```
+
+```python Python
+import os, requests
+
+PROXY = os.environ["AGENTROOT_PROXY"]
+TOKEN = os.environ["AGENTROOT_TOKEN"]
+AGENT = os.environ["AGENTROOT_AGENT_ID"]
+
+HEADERS = {
+    "Authorization": f"Bearer {TOKEN}",
+    "X-AgentRoot-ID": AGENT,
+}
+
+def check_inbox():
+    r = requests.get(f"{PROXY}/gmail/inbox?unread=true", headers=HEADERS)
+    return r.json()
+
+def send_mail(to, subject, body):
+    return requests.post(
+        f"{PROXY}/gmail/send",
+        headers={**HEADERS, "Content-Type": "application/json"},
+        json={"to": to, "subject": subject, "body": body},
+    )
+
+def reply_to_thread(thread_id, body):
+    return requests.post(
+        f"{PROXY}/gmail/reply/{thread_id}",
+        headers={**HEADERS, "Content-Type": "application/json"},
+        json={"body": body},
+    )
+```
+</CodeGroup>
+
+The agent container holds zero Gmail credentials. The address and app password live in Vault, are resolved by the secure worker on every request, and never leave AgentRoot's trust boundary.
+
+## Verification
+
+After binding, confirm end-to-end before shipping the agent:
+
+1. **Send a test email** from the agent to your own inbox. Confirm it arrives with the PA's address in the From line.
+2. **Reply from your inbox** to the PA's address. The PA's `checkInbox()` call should surface it on the next poll.
+3. **Open the PA's Gmail in incognito** (using the password you set in step 2 of setup). You'll see the same Sent and Inbox state that the agent sees — Gmail is the canonical store, the agent is just another client. This is your debugging surface.
+
+## Operating notes
+
+**Polling cadence.** IMAP is poll-based — there's no push notification path without OAuth + Pub/Sub. For most agent use cases, 30–60 second polling is fine. For sub-10-second response requirements, IMAP IDLE (long-lived connection) is technically possible but awkward on Cloudflare Workers' request/response model; V1.1 optimization, not V1 work.
+
+**Send limits.** Gmail enforces 2,000 outbound messages per day per Workspace user (paid plans), 500 per day for free Workspace. Plenty for V1 demo arcs and customer service flows. At higher volume, swap SMTP for [Resend](../providers/actions/resend) on the outbound side — same proxy pattern, different upstream.
+
+**Rotation.** To rotate the credential: generate a new app password in the PA's `myaccount.google.com/apppasswords` page (the old one stays valid until you delete it), paste the new one into AgentRoot, delete the old app password from the PA's Google account. Zero-downtime rotation.
+
+**Kill switch.** Disabling the Gmail binding in AgentRoot stops outbound and inbound through the proxy immediately. To kill the credential at the Google side as well (defense in depth), delete the app password in the PA's Google account.
+
+**Human access still works.** The PA's Gmail mailbox is a normal Workspace mailbox. You can sign in via Chrome any time with the regular password to inspect what the agent has sent or received. App passwords don't replace regular login — they coexist.
+
+## Roadmap
+
+- **V1 (this recipe):** IMAP/SMTP via app password. Full Gmail read + send. No OAuth scopes, no CASA, no Google verification.
+- **V1.1:** Optional add-on of Sensitive-tier Google OAuth for Calendar, Drive (`drive.file`), Sheets, and Docs. Each PA's OAuth grant is per-PA scoped, same Vault pattern. Google verification required (no CASA at Sensitive tier).
+- **V2:** Drop Workspace dependency entirely for PAs. Cloudflare Email Routing handles inbound; Resend (or equivalent) handles outbound. PAs no longer consume Workspace seats. Workspace becomes a humans-only thing. This recipe's app-password pattern becomes a legacy fallback for customers who specifically want Gmail-as-the-canonical-store.
+
+## Related
+
+- [Architecture](../architecture) — the five-component trust model
+- [Action Classes](../action-classes) — how Communication-class calls are governed
+- [Playbooks → Rotating a compromised key](../playbooks) — kill-switch and rotation patterns
+- [providers/actions/gmail](../providers/actions/gmail) — the OAuth-based Gmail reference (used for User G-OAUTH, not PA G-OAUTH in V1)

@@ -1,0 +1,194 @@
+---
+title: "PA Recipe — Slack as a User Identity"
+description: "End-to-end setup for giving a Principal Agent its own Slack identity so it participates in workspaces as a user, not a bot."
+status: draft
+draft_reason: "Proven end-to-end in Session 60 against Athena's railway-athena agent. Pending PA-aware Vault scoping in AgentRoot (the binding currently attaches to the SA agent record; same shape carries forward to PA). Do NOT publish to mintlify (not yet listed in docs.json)."
+related:
+  - ../architecture
+  - ../action-classes
+  - ../playbooks
+  - ../providers/actions/slack
+created: 2026-05-18
+updated: 2026-05-18
+---
+
+This recipe sets up a Principal Agent (PA) with its own Slack identity, bound to a Slack User OAuth Token (`xoxp-`) rather than a Slack Bot Token (`xoxb-`). The result: the PA participates in the Slack workspace as a real user — posts appear without an "APP" badge, DMs route to the PA's user account, @-mentions work, and search treats the PA the same as any other member. This is the load-bearing difference between a Principal Agent in Slack and a generic Slack bot.
+
+This pattern was proven end-to-end in Session 60 against `athena@agentroot.app` in the Vitro Technology workspace. The validation surface is the railway-athena heartbeat agent, which calls `slack/auth.test` through the AgentRoot proxy every five minutes.
+
+## Why a User OAuth Token, not a Bot Token
+
+A Bot Token gives the agent the "APP" badge and a separate bot identity in the workspace. Useful for transactional bots that need their own identity. Wrong shape for a Principal Agent, which is meant to be a persistent member of the team.
+
+A User OAuth Token authenticates as the human user who installed the app. From Slack's perspective, every call the token makes is "this user did this." Posts appear from the PA with no app badge, the PA's profile photo and display name are what the team sees, and the PA shows up in member lists the same as any human.
+
+The AgentRoot Slack proxy doesn't differentiate between token types at the bearer-auth layer — Slack discriminates downstream by the token prefix (`xoxb-` for bot, `xoxp-` for user). So the existing Slack provider in AR accepts a User OAuth Token without code changes.
+
+## Prerequisites
+
+- A Google Workspace tenant — the PA needs a workspace email (`<pa-name>@agentroot.app`) to be invited to Slack as a user.
+- The target Slack workspace exists and you can invite users to it.
+- A PA wallet (EOA in Vault) already minted for this agent in AgentRoot. The Slack binding attaches to the PA identity.
+- The PA's workspace email is set up per the [PA Gmail recipe](./pa-gmail) (only the user-provisioning steps — you don't need the Gmail binding itself for Slack to work).
+
+## Setup
+
+### 1. Invite the PA to the Slack workspace
+
+In Slack, as a workspace admin: `Workspace → Manage members → Invite people`. Use `<pa-name>@agentroot.app`. The PA receives the invite email at the workspace mailbox you provisioned earlier.
+
+### 2. Accept the invite as the PA
+
+Open a fresh incognito window. Sign in to Gmail as the PA (using the password you set during workspace user creation). Find the Slack invite email, click the join link, complete Slack's onboarding — set a display name and a profile photo. The PA is now a member of the workspace, indistinguishable in the member list from any human.
+
+### 3. Create a Slack App for the PA
+
+Still in the PA's incognito session, navigate to `api.slack.com/apps → Create New App → From scratch`. Name it something descriptive (`AgentRoot Proxy — <pa-name>`) and pick the target workspace.
+
+**Critical:** the app is being created from the PA's session. The "user who installed the app" will be the PA — that's what makes the resulting token a user token rather than a bot token.
+
+### 4. Configure User Token Scopes only
+
+In the app's `OAuth & Permissions` page, scroll to **User Token Scopes** (NOT Bot Token Scopes). Add the scopes the PA needs:
+
+- `channels:history` — read public channel history
+- `groups:history` — read private channel history
+- `im:history` — read DMs
+- `mpim:history` — read group DMs
+- `channels:read` — list public channels
+- `users.profile:read` — read user profile info
+- `search:read` — search the workspace
+- `chat:write` — post messages as the PA
+
+Leave Bot Token Scopes empty. This is the load-bearing config — adding any Bot Token Scope causes Slack to issue a bot token alongside the user token, which gives the app the "APP" badge.
+
+### 5. Install the app to the workspace
+
+In the same `OAuth & Permissions` page, click **Install to Workspace**. Slack prompts for confirmation — confirm. Slack issues a User OAuth Token starting with `xoxp-`. Copy it.
+
+### 6. Bind the token to the PA in AgentRoot
+
+In the AgentRoot dashboard (your normal session), open the PA's detail page → **Bindings** → **Add Slack**. Paste the `xoxp-` token into the secure iframe. Click **Save**. AgentRoot stores the token in Vault, scoped to this PA's binding slot.
+
+The existing Slack provider in AR accepts the user token without any provider-side changes. The token-prefix validation question that came up at Session 60 is already resolved — `xoxp-` flows through the existing paste-key surface.
+
+### 7. Close incognito
+
+The PA's Slack identity is live. From now on, all Slack calls the PA makes through AgentRoot will appear in Slack as coming from the PA's user account.
+
+## Agent code
+
+The agent reaches Slack through AgentRoot's proxy, same pattern as every other API binding.
+
+<CodeGroup>
+```typescript TypeScript
+const PROXY = process.env.AGENTROOT_PROXY!;
+const TOKEN = process.env.AGENTROOT_TOKEN!;
+const AGENT = process.env.AGENTROOT_AGENT_ID!;
+
+// Identity-revealing diagnostic — confirms the token is acting as the PA.
+async function authTest() {
+  const res = await fetch(`${PROXY}/slack/auth.test`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-AgentRoot-ID": AGENT,
+    },
+  });
+  const body = await res.json();
+  // Effective OK check — Slack returns HTTP 200 with {ok: false} on auth failures.
+  const ok = res.ok && body?.ok === true;
+  return { ok, user: body.user, userId: body.user_id, team: body.team };
+}
+
+// Post a message as the PA.
+async function postMessage({ channel, text, threadTs }) {
+  return fetch(`${PROXY}/slack/api/chat.postMessage`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-AgentRoot-ID": AGENT,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      channel,
+      text,
+      ...(threadTs && { thread_ts: threadTs }),
+    }),
+  });
+}
+
+// Read recent messages from a channel.
+async function readChannel({ channel, limit = 20 }) {
+  return fetch(`${PROXY}/slack/api/conversations.history?channel=${channel}&limit=${limit}`, {
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-AgentRoot-ID": AGENT,
+    },
+  });
+}
+```
+
+```python Python
+import os, requests
+
+PROXY = os.environ["AGENTROOT_PROXY"]
+TOKEN = os.environ["AGENTROOT_TOKEN"]
+AGENT = os.environ["AGENTROOT_AGENT_ID"]
+
+HEADERS = {
+    "Authorization": f"Bearer {TOKEN}",
+    "X-AgentRoot-ID": AGENT,
+}
+
+def auth_test():
+    r = requests.post(f"{PROXY}/slack/auth.test", headers=HEADERS)
+    body = r.json()
+    ok = r.ok and body.get("ok") is True
+    return {"ok": ok, "user": body.get("user"), "user_id": body.get("user_id"), "team": body.get("team")}
+
+def post_message(channel, text, thread_ts=None):
+    payload = {"channel": channel, "text": text}
+    if thread_ts:
+        payload["thread_ts"] = thread_ts
+    return requests.post(
+        f"{PROXY}/slack/api/chat.postMessage",
+        headers={**HEADERS, "Content-Type": "application/json"},
+        json=payload,
+    )
+```
+</CodeGroup>
+
+**Slack's HTTP-200-with-body-error quirk:** Slack returns HTTP 200 even for auth failures, with `{ok: false, error: "..."}` in the body. The classifier in your agent should compute `effectiveOk = res.ok && parsed.ok === true` — this is what the railway-athena v0.4 heartbeat does. Without this, your status dashboard sees green on actual failures.
+
+## Verification
+
+After binding, confirm end-to-end:
+
+1. **Call `auth.test` through AR.** Expected reply: `auth.test ok — connected as <pa-name> (<user_id>) to <workspace_name>`. The PA's user ID and team are returned by Slack — this is the canonical proof that the token acts as the PA-the-user.
+2. **Post a test message to a channel.** Open Slack in your browser, look at the channel. The message should appear from the PA with no "APP" badge.
+3. **@-mention the PA in a channel.** The PA receives the mention the same as any human user would — it shows in the PA's `@-mentions` view, the PA's avatar surfaces in the channel header, etc.
+4. **DM the PA.** The DM appears in the PA's DM list. The agent can read it via `conversations.history` on the DM channel.
+
+## Operating notes
+
+**Token revocation.** Slack User OAuth Tokens don't auto-expire, but they CAN be revoked. Triggers: the PA's user account is deactivated, the user (PA) revokes the app from their `slack.com/apps/manage` page, an admin removes the app from the workspace. On revocation, all proxy calls return `invalid_auth` — AR's kill-switch dashboards surface this immediately.
+
+**Kill switch.** Disabling the Slack binding in AgentRoot stops all proxy calls to Slack as the PA. To kill at the Slack side (defense in depth), an admin removes the app from the workspace.
+
+**OAuth foundation queued for V1.x.** The paste-key user-token workaround above works today but doesn't manage OAuth lifecycle (handling token revocation, re-OAuth on 401). When AgentRoot adds proper Slack OAuth, it becomes the third entry in the OAuth foundation set (Google + GitHub + Slack). Track in ADR pipeline.
+
+**Multi-workspace PAs.** A single Slack User OAuth Token is scoped to one workspace. If the PA needs to participate in multiple Slack workspaces, repeat steps 3–6 per workspace and bind multiple Slack tokens. AgentRoot's Vault scoping supports multiple Slack bindings per PA (named by workspace identifier).
+
+## Roadmap
+
+- **V1 (this recipe):** User OAuth Token paste-key per workspace, manual provisioning per PA per workspace.
+- **V1.x:** Slack OAuth foundation in AgentRoot — handles token revocation/refresh, eliminates manual re-paste on re-auth. Same shape as the Google OAuth foundation.
+- **V2:** Slack OAuth foundation supports user-token grants at install time, eliminating the create-app-as-PA incognito step.
+
+## Related
+
+- [Architecture](../architecture) — the five-component trust model
+- [Action Classes](../action-classes) — how Communication-class calls are governed
+- [PA Gmail recipe](./pa-gmail) — the workspace-email setup the Slack binding depends on
+- [providers/actions/slack](../providers/actions/slack) — the Slack proxy reference
