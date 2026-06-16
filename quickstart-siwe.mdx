@@ -17,7 +17,7 @@ Connect your Ethereum wallet, register an agent with sovereign onchain identity,
 
 Go to [ux.agentroot.app](https://ux.agentroot.app) and click **Connect Wallet**. Sign the SIWE (Sign-In with Ethereum) message to authenticate. This proves you own the wallet — no password, no email, no account creation.
 
-Your wallet address becomes your operator identity. All agents you register are attested by your wallet, and only your wallet can revoke them onchain (Tier 3 kill switch). This authority is sovereign to you — not even AgentRoot can override it.
+Your wallet address becomes your Owner identity. All agents you register are attested by your wallet, and only your wallet can revoke them onchain (Tier 3 kill switch). This authority is sovereign to you — not even AgentRoot can override it.
 
 ## Step 2: Register an Agent
 
@@ -43,13 +43,13 @@ The wizard shows your agent's credentials:
 
 ```
 AGENTROOT_AGENT_ID=0x7a3f...  (your agent's unique ID — the EAS attestation UID)
-AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx  (session token, 24-hour TTL)
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx  (session token — long-lived; revoke to kill)
 AGENTROOT_PROXY=https://proxy.agentroot.app
 ```
 
 Download or copy these values. You'll add them to your agent's environment.
 
-The session token is the only secret here, and it expires in 24 hours. If it's compromised, revoke it from the dashboard and a new one is issued automatically.
+The session token is the only secret here, and it's long-lived — it doesn't expire on a timer. If it's compromised, roll it from the dashboard (or freeze the agent) and the old value stops working immediately.
 
 ### Configure Your Agent
 

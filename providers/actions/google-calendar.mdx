@@ -3,14 +3,20 @@ title: "Google Calendar"
 description: "Create, update, list events on Google Calendar."
 ---
 
-Google Calendar through AgentRoot. Your agent never holds the Google Calendar API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+Google Calendar through AgentRoot. Your agent never holds a Google credential — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
 
 ## Setup
 
+AgentRoot brokers Google access for you — there is no API key to paste.
+
 1. Dashboard → **Connect** → Google Calendar
-2. Paste your Google Calendar API key into the secure iframe
-3. Bind the key to one or more agents
+2. Authorize Google at **non-sensitive** scope to sign in. Calendar read and write is a **sensitive** scope, enabled once AgentRoot completes Google's sensitive-scope verification.
+3. Bind the connection to one or more agents
 4. Point your code at `https://proxy.agentroot.app/google-calendar`
+
+<Note>
+At V1, Google connects at non-sensitive scope. Calendar API access (shown below) is the sensitive-scope path, rolling out as verification completes.
+</Note>
 
 For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
 

@@ -3,14 +3,20 @@ title: "Gmail"
 description: "Send email and manage Gmail mailboxes via the Google API."
 ---
 
-Gmail through AgentRoot. Your agent never holds the Gmail API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+Gmail through AgentRoot. Your agent never holds a Google credential — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
 
 ## Setup
 
+AgentRoot brokers Google access for you — there is no API key to paste.
+
 1. Dashboard → **Connect** → Gmail
-2. Paste your Gmail API key into the secure iframe
-3. Bind the key to one or more agents
+2. Authorize Google at **non-sensitive** scope (sign-in + file-scoped Drive). For sending and receiving mail, AgentRoot uses an **app password** over IMAP/SMTP on Workspace accounts — see the [Gmail recipe](/recipes/pa-gmail) for the full walkthrough.
+3. Bind the connection to one or more agents
 4. Point your code at `https://proxy.agentroot.app/gmail`
+
+<Note>
+At V1, Google connects at non-sensitive scope and agent email runs over app-password IMAP/SMTP. Broader Gmail send and read through the Google API (shown below) is the sensitive-scope path, rolling out as we complete Google's verification.
+</Note>
 
 For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
 

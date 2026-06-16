@@ -1,18 +1,18 @@
 ---
 title: "Dashboard Guide"
-description: "How operators use ux.agentroot.app — organized by the four moments that matter."
+description: "How Owners use ux.agentroot.app — organized by the four moments that matter."
 ---
 
-The dashboard at [ux.agentroot.app](https://ux.agentroot.app) is your control plane. Most operators only need four workflows: onboarding a new agent, daily monitoring, triaging a suspicious call, and going to sleep. This page covers each in order, then leaves the rest as reference.
+The dashboard at [ux.agentroot.app](https://ux.agentroot.app) is your control plane. Most Owners only need four workflows: onboarding a new agent, daily monitoring, triaging a suspicious call, and going to sleep. This page covers each in order, then leaves the rest as reference.
 
-For incident-response runbooks — the moments where you need a script, not a tour — see [Operator Playbooks](playbooks).
+For incident-response runbooks — the moments where you need a script, not a tour — see [Owner Playbooks](playbooks).
 
 ## Sign in
 
 Two sign-in methods, both give full dashboard access:
 
 - **Social login (Google or GitHub)** — fastest path. AgentRoot's managed attester (`agentroot.eth`) signs onchain attestations on your behalf. You get every dashboard feature; you don't get sovereign Tier 3 (your wallet revoking onchain, independent of AgentRoot).
-- **SIWE (Sign-In with Ethereum)** — sovereign mode. Your wallet is your operator identity. Tier 3 [Kill](kill-switch) revocations sign from your wallet directly against the EAS contract on Base.
+- **SIWE (Sign-In with Ethereum)** — sovereign mode. Your wallet is your Owner identity. Tier 3 [Kill](kill-switch) revocations sign from your wallet directly against the EAS contract on Base.
 
 Migration from social to SIWE without re-registering agents is in development. If you might want sovereign control eventually, sign up with SIWE now.
 
@@ -98,11 +98,11 @@ Every plan includes the full kill switch, EAS identity, audit logging, and per-c
 
 ### Account
 
-Operator profile (wallet or social identity), API tokens for the dashboard's own read-only API, and the team-seat management surface (Team and Enterprise plans only).
+Owner profile (wallet or social identity), API tokens for the dashboard's own read-only API, and the team-seat management surface (Team and Enterprise plans only).
 
 ## Related
 
-- **[Operator Playbooks](playbooks)** — incident response, rotation, deployment, the 3am phone call
+- **[Owner Playbooks](playbooks)** — incident response, rotation, deployment, the 3am phone call
 - **[Quickstart](quickstart)** — onboarding step-by-step for both sign-in methods
 - **[Lifecycle](lifecycle)** — Mint, Disable, Kill, ReMint as first-class concepts
 - **[Kill Switch](kill-switch)** — the four enforcement mechanisms in detail

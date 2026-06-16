@@ -9,11 +9,11 @@ Everything else in this page describes infrastructure the agent will never see, 
 
 ## The two-plane model
 
-AgentRoot separates the operator's control surface from the agent's runtime surface. The two planes share no credentials, no sessions, and no privileges. An attacker who compromises one plane cannot reach the other.
+AgentRoot separates the Owner's control surface from the agent's runtime surface. The two planes share no credentials, no sessions, and no privileges. An attacker who compromises one plane cannot reach the other.
 
 ```mermaid
 flowchart TB
-    subgraph CP["Control Plane (operator)"]
+    subgraph CP["Control Plane (Owner)"]
         DSH[Dashboard]
         POL[Policy Engine]
         VAULT[(Encrypted Vault)]
@@ -45,11 +45,11 @@ flowchart TB
     class EAS chain
 ```
 
-**Control plane** is where you, the operator, work: register agents, add API keys, set thresholds, monitor activity, trigger kills. The dashboard is *untrusted for key custody* — it can submit keys for encrypted storage but never retrieves plaintext. The policy engine is the single point of authorization. The vault holds every secret in the system.
+**Control plane** is where you, the Owner, work: register agents, add API keys, set thresholds, monitor activity, trigger kills. The dashboard is *untrusted for key custody* — it can submit keys for encrypted storage but never retrieves plaintext. The policy engine is the single point of authorization. The vault holds every secret in the system.
 
 **Agent plane** is where the agent runs. It sees the proxy and nothing else. No vault. No dashboard. No policy engine. No keys.
 
-**Identity layer** lives on Ethereum, not on AgentRoot. Every agent has an [EAS](introduction#why-onchain-matters) attestation on Base that records its public key and operator wallet. Both the policy engine and the proxy validate against this layer on every request, and the operator revokes against this layer when issuing a Tier 3 [Kill](kill-switch).
+**Identity layer** lives on Ethereum, not on AgentRoot. Every agent has an [EAS](introduction#why-onchain-matters) attestation on Base that records its public key and Owner wallet. Both the policy engine and the proxy validate against this layer on every request, and the Owner revokes against this layer when issuing a Tier 3 [Kill](kill-switch).
 
 ## How a request flows
 
@@ -90,7 +90,7 @@ The vault is the only place your API keys exist — they're never written to dis
 
 **Agent Root Secret Keys (ARSK)** are P-256 keypairs generated *inside* the vault during agent registration. The private key never leaves the vault — not for backup, not for export, not for migration. The public key is recorded in the agent's EAS attestation, creating a verifiable link between the onchain identity and the vault-custodied private key.
 
-**Session tokens** (`art_live_xxx`) are the agent's runtime credential. 24-hour TTL, with refresh available from the dashboard before expiry. Scoped to a single agent. Cannot be extended by the agent or used to access other agents. If a token is compromised, the damage is bounded to a 24-hour window — and you can revoke it instantly from the dashboard, or revoke the underlying attestation from your wallet for a permanent kill.
+**Session tokens** (`art_live_xxx`) are the agent's runtime credential. Long-lived — no timed expiry, no rotation; set once in the agent's environment. Scoped to a single agent. Cannot be extended by the agent or used to access other agents. If a token is compromised, you cut access by rolling the token or freezing/killing the agent — revocation is enforced on every request, so the exposure window is how fast you revoke, not a fixed lifetime.
 
 The full custody story — including HSM-backed unseal, two-person review for production access to the vault, and threat-by-threat mitigations — is in the [Security Model](security).
 
@@ -101,7 +101,7 @@ Your agent's identity lives on a public blockchain, not in our database. That's 
 An agent's identity is an EAS attestation on Base. The attestation records:
 
 - The agent's public key (P-256, generated in vault)
-- The operator's wallet address (or AgentRoot's managed-attester wallet, in social-login mode)
+- The Owner's wallet address (or AgentRoot's managed-attester wallet, in social-login mode)
 - A schema-defined set of policy fields (per-tx caps, scope flags, sub-agent permissions)
 - A `revocationTime` field that is zero while the agent is live and a block timestamp once revoked
 
@@ -116,7 +116,7 @@ The system never degrades to an insecure mode. Each failure mode produces a clea
 | Failure | What the agent sees | Why it's safe |
 |---|---|---|
 | Vault unreachable | `503 VAULT_UNAVAILABLE` | No cached keys; no fallback auth |
-| Session token expired | `401 TOKEN_EXPIRED` | No token refresh on the request path |
+| Session token rolled | `401 TOKEN_REVOKED` | A new token was issued; the old value is rejected |
 | Session token revoked | `401 TOKEN_REVOKED` | Revocation propagates before next request |
 | Attestation revoked onchain | `403 ATTESTATION_REVOKED` | Permanent; no override |
 | Tier 1 binding off | `403 PROVIDER_DISABLED` | Per-binding flag at edge |
@@ -131,14 +131,14 @@ Downtime is always preferred over unauthorized access. The proxy will refuse a l
 Worth repeating: this is the entire blast radius if the agent runtime is fully compromised.
 
 ```bash
-AGENTROOT_AGENT_ID=eas:0x8a1f...c3d7
-AGENTROOT_TOKEN=eyJhbGci...           # auto-rotating, 24h
+AGENTROOT_AGENT_ID=0x8a1f...c3d7
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx  # long-lived — revoke to kill
 AGENTROOT_PROXY=https://proxy.agentroot.app
 ```
 
 No API keys. No private keys. No vault credentials. No dashboard access. No knowledge of other agents. No path to escalate privileges. The token is a short-lived proxy access credential that contains no key material.
 
-If the agent's environment is fully exposed, the attacker gets at most 24 hours of proxy access with the agent's existing bindings — and you can shut that down in seconds from the dashboard or permanently from your wallet.
+If the agent's environment is fully exposed, the attacker has proxy access with the agent's existing bindings only until you cut it off — roll the token or freeze the agent from the dashboard in seconds, or kill the attestation permanently from your wallet. Revocation is enforced on every request.
 
 ## Related
 

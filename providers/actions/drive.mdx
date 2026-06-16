@@ -3,14 +3,20 @@ title: "Google Drive"
 description: "Upload, list, share files on Google Drive."
 ---
 
-Google Drive through AgentRoot. Your agent never holds the Google Drive API key — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
+Google Drive through AgentRoot. Your agent never holds a Google credential — every call routes through the proxy, the key is injected from the vault, and the call is classified, gated, and audited.
 
 ## Setup
 
+AgentRoot brokers Google access for you — there is no API key to paste.
+
 1. Dashboard → **Connect** → Google Drive
-2. Paste your Google Drive API key into the secure iframe
-3. Bind the key to one or more agents
+2. Authorize Google at **non-sensitive** scope. Drive access at V1 is **file-scoped** (`drive.file`) — your agent sees only the files it creates or that are explicitly shared with it.
+3. Bind the connection to one or more agents
 4. Point your code at `https://proxy.agentroot.app/drive`
+
+<Note>
+Full-Drive read is a restricted scope, gated on Google verification and a security assessment — available after V1, not in the initial release.
+</Note>
 
 For the conventions every example assumes — required headers, error codes, idempotency — see [Conventions](../conventions).
 

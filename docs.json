@@ -38,6 +38,7 @@
             "group": "Getting Started",
             "pages": [
               "introduction",
+              "agent-classes",
               "action-classes",
               "lifecycle",
               "quickstart",
@@ -59,6 +60,12 @@
             "group": "Developer",
             "pages": [
               "api-reference"
+            ]
+          },
+          {
+            "group": "Recipes",
+            "pages": [
+              "recipes/pa-gmail"
             ]
           },
           {

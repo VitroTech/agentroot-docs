@@ -7,7 +7,7 @@ Coinbase Wallet is an identity-layer integration. AgentRoot does not proxy Coinb
 
 ## What Coinbase Wallet support means
 
-- **Sign in to the dashboard** — Coinbase Wallet signs the SIWE message at `ux.agentroot.app`. Your wallet address becomes your operator identity.
+- **Sign in to the dashboard** — Coinbase Wallet signs the SIWE message at `ux.agentroot.app`. Your wallet address becomes your Owner identity.
 - **Mint agents from your wallet** — the EAS attestation transaction on Base is signed by Coinbase Wallet.
 - **Sovereign Tier 3 kill** — revoke an agent's attestation onchain by signing a revocation transaction from Coinbase Wallet. This works directly against the EAS contract on Base — AgentRoot is not in the loop.
 - **ReMint** — after a Kill, sign a new attestation from Coinbase Wallet to bring the agent back under a fresh identity.
@@ -16,16 +16,16 @@ Coinbase Wallet is an identity-layer integration. AgentRoot does not proxy Coinb
 
 - Hold your upstream API keys (those live in the vault, not in your wallet)
 - Sign every proxied request (the agent's session token signs those, not your wallet)
-- Run anywhere near the agent's runtime (the wallet stays on your operator device)
+- Run anywhere near the agent's runtime (the wallet stays on your Owner device)
 
-The pattern: **wallet is operator identity, vault is key custody, proxy is runtime.** Three separate trust boundaries; Coinbase Wallet only crosses the first one.
+The pattern: **wallet is Owner identity, vault is key custody, proxy is runtime.** Three separate trust boundaries; Coinbase Wallet only crosses the first one.
 
 ## Setup
 
 1. Install Coinbase Wallet on the device you'll administer agents from (laptop or phone)
 2. Go to [ux.agentroot.app](https://ux.agentroot.app) → **Connect Wallet** → pick Coinbase Wallet
 3. Sign the SIWE message to authenticate
-4. Your wallet address is now your operator identity for AgentRoot
+4. Your wallet address is now your Owner identity for AgentRoot
 
 For mobile signing during a Tier 3 kill, the Coinbase Wallet mobile app handles the EAS revocation transaction the same way it would any other Base transaction.
 

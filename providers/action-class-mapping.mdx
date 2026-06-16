@@ -53,7 +53,7 @@ The per-provider overrides are documented on each provider page in the "Action c
 When the proxy receives a request, it:
 
 1. Classifies the call into an action class
-2. Checks the operator's per-class auto-kill thresholds (Spend $/day, Communication sends/hour, Destruction quota, etc.)
+2. Checks the Owner's per-class auto-kill thresholds (Spend $/day, Communication sends/hour, Destruction quota, etc.)
 3. Applies per-class default postures (Destruction is deny-by-default; everything else is allow-with-cap)
 4. If the call passes both, forwards to the upstream
 
@@ -78,7 +78,7 @@ There are two override paths.
 
 ### Per-binding override (dashboard)
 
-For any route on any provider, the operator can override the default class. This is useful when:
+For any route on any provider, the Owner can override the default class. This is useful when:
 
 - You've custom-built an integration on top of a preset provider and the generic path classifier gets it wrong
 - A new endpoint launched at the upstream that isn't yet in AgentRoot's classification table
@@ -95,15 +95,15 @@ POST https://proxy.agentroot.app/custom/v1/internal-api
 X-AgentRoot-Class-Override: provisioning
 ```
 
-Per-request overrides are logged separately in the audit trail (the override action is itself audited). The proxy enforces that the override doesn't *relax* a class to a less restrictive one — you can override Writes → Destruction (more restrictive), not Destruction → Writes (less restrictive). Operators control this asymmetry; the agent cannot relax its own governance.
+Per-request overrides are logged separately in the audit trail (the override action is itself audited). The proxy enforces that the override doesn't *relax* a class to a less restrictive one — you can override Writes → Destruction (more restrictive), not Destruction → Writes (less restrictive). Owners control this asymmetry; the agent cannot relax its own governance.
 
 ## Custom provider classification
 
-For the [Custom provider](custom), every route is `unknown` by default. The first call to a new route classifies as Writes and surfaces in the dashboard for manual classification. Operators should classify every active Custom route — leaving routes as `unknown` means they're governed by the conservative Writes default, which may be too loose or too tight depending on what the route does.
+For the [Custom provider](custom), every route is `unknown` by default. The first call to a new route classifies as Writes and surfaces in the dashboard for manual classification. Owners should classify every active Custom route — leaving routes as `unknown` means they're governed by the conservative Writes default, which may be too loose or too tight depending on what the route does.
 
 ## Where to learn more
 
 - **[Action Classes](/action-classes)** — what each class governs, with examples
 - **[Kill Switch](/kill-switch)** — how per-class auto-kill thresholds interact with the four kill tiers
 - **[Custom](custom)** — classifying routes on a Custom provider
-- **[Operator Playbooks](/playbooks)** — the "investigating a suspicious call" runbook uses class assignments as the primary triage signal
+- **[Owner Playbooks](/playbooks)** — the "investigating a suspicious call" runbook uses class assignments as the primary triage signal

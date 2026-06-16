@@ -87,7 +87,7 @@ AgentRoot is built around the proxy first and the LLM second. Spend governance i
 
 Each class has its own kill semantics, in addition to the global kill switch tiers documented in [Kill Switch](kill-switch).
 
-| Class | Default posture | Operator override | Auto-kill triggers |
+| Class | Default posture | Owner override | Auto-kill triggers |
 |---|---|---|---|
 | Spend | Allow with cap | Per-model allowlist | $/day, $/month, $/call |
 | Communication | Allow with rate limit | Recipient allowlist | sends/hour, off-hours pause |
@@ -102,7 +102,7 @@ Destruction is deny-by-default for a reason. The cost of a false negative on a D
 
 Every proxied call is classified at the proxy layer based on the upstream endpoint and HTTP method. `POST /v1/chat/completions` against OpenAI is Spend. `POST /messages` against Slack is Communication. `DELETE /repos/{owner}/{repo}` against GitHub is Destruction. The classification is part of the audit log on every call, queryable from the dashboard or via the read-only audit endpoint.
 
-Custom upstreams (the `custom` provider) classify into Writes by default. Operators can override the classification on a per-route basis from the dashboard.
+Custom upstreams (the `custom` provider) classify into Writes by default. Owners can override the classification on a per-route basis from the dashboard.
 
 ## Where to read more
 

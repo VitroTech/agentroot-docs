@@ -27,9 +27,9 @@ stateDiagram-v2
 
 ### Mint
 
-**What it does:** creates a new agent. Vault generates a P-256 keypair (private key never leaves the vault). The dashboard or your wallet signs an EAS attestation onchain that records the agent's public key and operator identity. The attestation UID becomes the agent's `agent_id`.
+**What it does:** creates a new agent. Vault generates a P-256 keypair (private key never leaves the vault). The dashboard or your wallet signs an EAS attestation onchain that records the agent's public key and Owner identity. The attestation UID becomes the agent's `agent_id`.
 
-**Who triggers it:** the operator, from the dashboard.
+**Who triggers it:** the Owner, from the dashboard.
 
 **Cost:** in managed mode, AgentRoot pays the gas. In sovereign (SIWE) mode, your wallet pays Base gas — typically less than a cent.
 
@@ -41,7 +41,7 @@ stateDiagram-v2
 
 **What it does:** pauses every API the agent reaches. The proxy returns `403 AGENT_KILLED` on every request. Bindings stay intact — the agent is still registered, the keys are still in the vault, the EAS attestation is still live.
 
-**Who triggers it:** the operator, from the dashboard. Or auto-kill, when usage thresholds are crossed.
+**Who triggers it:** the Owner, from the dashboard. Or auto-kill, when usage thresholds are crossed.
 
 **Cost:** none. No onchain transaction.
 
@@ -53,7 +53,7 @@ stateDiagram-v2
 
 **What it does:** revokes the EAS attestation onchain. The attestation's `revocationTime` is set to the current block timestamp. The proxy checks attestation status on every request and rejects revoked agents with `403 ATTESTATION_REVOKED`. The check is independent of the vault, the dashboard, and all AgentRoot infrastructure — even if AgentRoot is down, a revoked attestation stays revoked.
 
-**Who triggers it:** the operator. In sovereign (SIWE) mode, directly from your wallet against the EAS contract on Base — no AgentRoot dashboard required, no AgentRoot API required, no AgentRoot servers required. In managed mode, from the dashboard, with AgentRoot's attester signing the revocation on your behalf.
+**Who triggers it:** the Owner. In sovereign (SIWE) mode, directly from your wallet against the EAS contract on Base — no AgentRoot dashboard required, no AgentRoot API required, no AgentRoot servers required. In managed mode, from the dashboard, with AgentRoot's attester signing the revocation on your behalf.
 
 **Cost:** sovereign mode pays Base gas (less than a cent). Managed mode is included.
 
@@ -65,11 +65,13 @@ stateDiagram-v2
 
 **What it does:** creates a new EAS attestation under the *same* `agent_id` lineage. The vault keypair, API keys, bindings, and audit history all carry forward. The new attestation has a new UID; the old (revoked) UID stays onchain as permanent record. A `uid_lineage` chain links every incarnation.
 
-**Who triggers it:** the operator, after a Kill, from the dashboard.
+**Who triggers it:** the Owner, after a Kill, from the dashboard.
 
 **Cost:** Base gas (sovereign) or included (managed).
 
 **The result:** the agent is back online. New attestation, same soul. Same keys, same bindings, same dashboard view, same name. The audit trail tells the whole story: born, killed, reborn under your authority.
+
+**Reputation across lives.** For a Principal Agent, this is what makes reputation durable: because the agent keeps its keys and `agent_id` across a ReMint, the **ERC-8004 reputation it has earned — its agentic karma — carries forward through the Kill/ReMint cycle** instead of resetting. Agents have a half-life; the track record doesn't.
 
 **Use it for:** post-incident recovery. Kill the agent in anger; ReMint it after you've fixed the bug.
 
@@ -151,5 +153,5 @@ The lifecycle is the noun system. The kill switch is the verb system. They descr
 
 - **[Action Classes](action-classes)** — what kinds of action AgentRoot governs
 - **[Quickstart](quickstart)** — Mint your first agent
-- **[Kill Switch](kill-switch)** — the operator-facing playbook for each transition
+- **[Kill Switch](kill-switch)** — the Owner-facing playbook for each transition
 - **[Architecture](architecture)** — what happens under the hood at each transition

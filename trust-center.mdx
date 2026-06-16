@@ -42,17 +42,17 @@ See [Security → Zero-Knowledge Key Ingestion](security) for the full architect
 - **Customer authentication:** SIWE (Sign-In with Ethereum); optional second factor via mobile signer for high-risk operations
 - **Internal access:** Role-based and least-privilege; production vault access restricted to a named subset of engineers; all production access is logged
 - **Production changes:** Two-person review required for any change that touches key custody, the proxy code path, or the policy engine
-- **Session credentials:** 24-hour TTL with automatic rotation; instant revocation from the dashboard or onchain
+- **Session credentials:** long-lived bearer token (no timed expiry, no rotation); access cut by rolling the token or freezing/killing the agent, enforced on every request — instant revocation from the dashboard or onchain
 
 ### Audit logging
 
-Every API call routed through the AgentRoot proxy is logged with agent identity, operator wallet, provider, timestamp, response status, and latency. Operators can query logs for their own agents from the dashboard. Kill switch events at all four tiers are recorded. EAS attestation lifecycle events are publicly verifiable on the underlying blockchain.
+Every API call routed through the AgentRoot proxy is logged with agent identity, Owner wallet, provider, timestamp, response status, and latency. Owners can query logs for their own agents from the dashboard. Kill switch events at all four tiers are recorded. EAS attestation lifecycle events are publicly verifiable on the underlying blockchain.
 
 Log retention: 90 days on the standard plan, with longer retention available on Pro, Team, and Enterprise tiers. Export to S3 or BigQuery is available on Team and above.
 
 ### Sovereign kill switches
 
-AgentRoot's defining feature is that operators can permanently revoke an agent from their own wallet, independent of AgentRoot's infrastructure. Even if AgentRoot is offline, compromised, or has gone out of business, the onchain attestation remains revocable. See [Kill Switch](kill-switch) for all four tiers.
+AgentRoot's defining feature is that Owners can permanently revoke an agent from their own wallet, independent of AgentRoot's infrastructure. Even if AgentRoot is offline, compromised, or has gone out of business, the onchain attestation remains revocable. See [Kill Switch](kill-switch) for all four tiers.
 
 ### Fail-closed design
 
@@ -78,8 +78,8 @@ We commit to publishing a post-incident report for any incident affecting custom
 
 - **Customer-supplied API keys:** Encrypted in the vault. Not in logs, not in databases, not in error traces.
 - **Agent metadata:** Agent name, purpose, connected providers, configuration parameters.
-- **Usage logs:** Per-call records (agent ID, provider, timestamp, status, cost). Default retention 90 days; operators can export to long-term storage at any time or extend in-platform retention on Pro and higher tiers.
-- **Operator identity:** Ethereum wallet address; optional email address for transactional notifications.
+- **Usage logs:** Per-call records (agent ID, provider, timestamp, status, cost). Default retention 90 days; Owners can export to long-term storage at any time or extend in-platform retention on Pro and higher tiers.
+- **Owner identity:** Ethereum wallet address; optional email address for transactional notifications.
 - **Billing data:** Handled by Stripe. AgentRoot stores only Stripe customer ID and subscription metadata — no payment card data ever touches AgentRoot's infrastructure.
 
 ### What we don't store
@@ -94,7 +94,7 @@ Production data is hosted in the United States (primary region: US-East). EU cus
 
 ### Data deletion
 
-Operators can delete agents from the dashboard. Deletion removes encrypted keys from the active vault. EAS attestation revocation is a separate, onchain action initiated from the operator's wallet — see [Kill Switch → Tier 3](kill-switch). Audit logs are retained per the retention policy above; customers can request earlier deletion subject to legal hold considerations.
+Owners can delete agents from the dashboard. Deletion removes encrypted keys from the active vault. EAS attestation revocation is a separate, onchain action initiated from the Owner's wallet — see [Kill Switch → Tier 3](kill-switch). Audit logs are retained per the retention policy above; customers can request earlier deletion subject to legal hold considerations.
 
 ## Compliance Posture
 

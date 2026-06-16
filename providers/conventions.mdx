@@ -52,7 +52,7 @@ When the proxy rejects a request, the response is a JSON object with a consisten
 {
   "error": {
     "code": "AGENT_KILLED",
-    "message": "Agent has been paused by operator",
+    "message": "Agent has been paused by Owner",
     "tier": 2,
     "retryable": false,
     "requestId": "req_01HZ..."
@@ -64,8 +64,8 @@ The full code catalog:
 
 | HTTP | Code | Meaning | Retryable |
 |---|---|---|---|
-| 401 | `TOKEN_EXPIRED` | Session token TTL elapsed; rotate from dashboard | yes (after refresh) |
-| 401 | `TOKEN_REVOKED` | Operator killed the token | no |
+| 401 | `TOKEN_REVOKED` | Token rolled or revoked at AgentRoot; fetch the current token | no |
+| 401 | `TOKEN_REVOKED` | Owner killed the token | no |
 | 401 | `TOKEN_INVALID` | Malformed or unrecognized token | no |
 | 403 | `AGENT_KILLED` | Tier 2 — entire agent paused | no |
 | 403 | `PROVIDER_DISABLED` | Tier 1 — this binding off | no |

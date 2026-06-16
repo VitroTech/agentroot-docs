@@ -1,0 +1,47 @@
+---
+title: "Agent Classes"
+description: "Surrogate vs Principal — whose identity your agent acts under, and how to choose."
+---
+
+Every AgentRoot agent has a **class**, chosen when you create it. The class answers one question:
+
+> **Whose identity does the agent act under — yours, or its own?**
+
+You pick the class at creation, and it never changes. There is no promote or demote. (Cloning preserves the class; a cloned Principal starts with no identity of its own and is set up fresh.)
+
+This is a separate choice from how you **sign in** (Social or wallet). Sign-in decides who holds revocation authority over the agent's onchain attestation; class decides whose identity the agent wears. See [Quickstart](quickstart) for the sign-in choice.
+
+## Surrogate Agent — acts as you
+
+A Surrogate Agent is a governed, isolated route for *your* credentials. It uses your API keys, and if it touches Google, your Google grant. It exists to give you credential isolation, action governance, and an instant kill switch over *your* assets — without the agent ever holding a secret.
+
+This is the default, and the right choice for most agents: coding assistants, ops bots, research agents, anything that works on your behalf. It needs no identity of its own.
+
+## Principal Agent — acts as itself
+
+A Principal Agent is a first-class entity with its own identity: its own keys, its own onchain authority, and its own wallet. It can **transact on its own** — paying for data and services via **x402** — and **earn its own reputation** on **ERC-8004**, the onchain reputation registry. Think of it the way a seller builds a rating on eBay or a track record on social: the agent accrues a portable, verifiable history others can check before they trust it or do business with it. Choose Principal when you want an agent that holds, pays, and is accountable *as itself* — `athena@agentroot.app` sending its own mail, transacting on its own wallet, building reputation under its own name.
+
+What makes an agent a Principal is **its own keys, onchain authority, and wallet** — not Google. Google is an optional provider binding either class may use; it is never what makes an agent a Principal.
+
+## Side by side
+
+| | **Surrogate** | **Principal** |
+|---|---|---|
+| Acts as | You, the Owner | Itself |
+| Identity | Yours | Its own keys, authority, and wallet |
+| Autonomy layer | — | x402 payments + ERC-8004 reputation |
+| Why it exists | Isolation, governance, and kill switch over *your* assets | A first-class entity that holds, pays, and is accountable *as itself* |
+| Google, if used | Your grant (account-wide) | Its own grant (per-agent), or an app-password identity |
+| Default? | Yes | Choose explicitly |
+
+## What never changes between classes
+
+Ownership and the kill switch do not change with class. Both classes have an agent ID, an Owner-issued onchain attestation, and an Owner pointer. The proxy checks attestation status *before* it ever looks at class, so a single revocation kills either class the same way, through the same button.
+
+A Principal Agent has a **face, not sovereignty over itself**. Even if its runtime and its own credentials are fully compromised, revoking the attestation returns `403` on every call. The agent is an artifact of your continuing authorization — it has no existence independent of it. This is the architecture's answer to the [Pinocchio Problem](introduction#the-pinocchio-problem): an agent never comes to life beyond your reach, because it is only ever *authorized*, and the authorization is revocable at any moment.
+
+> Principal class gives the agent a face, not sovereignty over itself. *Owned by you* is invariant; what changes is who the world sees.
+
+## How to choose
+
+Pick **Surrogate** unless the agent needs its own outward identity. Choose **Principal** when the agent must send mail as itself, hold its own wallet, pay for things, or build reputation under its own name. You decide once, at creation.

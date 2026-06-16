@@ -58,8 +58,8 @@ curl -X POST https://proxy.agentroot.app/openai/v1/chat/completions \
 
 | HTTP | Code | Tier | Retryable | Meaning |
 |---|---|---|---|---|
-| 401 | `TOKEN_EXPIRED` | — | after refresh | Session token TTL elapsed |
-| 401 | `TOKEN_REVOKED` | — | no | Operator revoked the token |
+| 401 | `TOKEN_REVOKED` | — | no | Token rolled or revoked at AgentRoot |
+| 401 | `TOKEN_REVOKED` | — | no | Owner revoked the token |
 | 401 | `TOKEN_INVALID` | — | no | Malformed or unrecognized token |
 | 403 | `AGENT_KILLED` | 2 | no | Whole agent paused |
 | 403 | `PROVIDER_DISABLED` | 1 | no | This binding off |
@@ -76,7 +76,7 @@ Error body shape:
 {
   "error": {
     "code": "AGENT_KILLED",
-    "message": "Agent has been paused by operator",
+    "message": "Agent has been paused by Owner",
     "tier": 2,
     "retryable": false,
     "requestId": "req_01HZ..."
@@ -103,15 +103,15 @@ Returns:
 }
 ```
 
-The `ttl_seconds` value is the remaining lifetime of your session token. If it's under 600 seconds, refresh from the dashboard or rotate the agent before the token expires.
+The runtime token is long-lived and does not expire on a timer. You invalidate it by rolling it from the dashboard, or by freezing or killing the agent — enforced on every request.
 
 ## Authentication tokens
 
 Format: `art_live_xxxxxxxxxxxx`
 
-Session tokens are issued by the vault during agent registration and have a 24-hour TTL. Fetch a fresh token from the dashboard (or via the dashboard API documented separately) before the current one expires.
+Session tokens are issued by the vault during agent registration. The token is long-lived — it does not expire on a timer and is not rotated; set it once in the agent's environment. To cut access, roll the token or freeze/kill the agent.
 
-A revoked or expired token produces `401 TOKEN_EXPIRED` or `401 TOKEN_REVOKED` on the next request. The agent's EAS attestation UID never changes — only the session token does.
+A rolled or revoked token produces `401 TOKEN_REVOKED` on the next request. The agent's EAS attestation UID never changes — only the session token value does.
 
 ## Provider identifiers
 

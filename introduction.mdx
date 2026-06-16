@@ -17,7 +17,7 @@ AgentRoot keeps the strings in your hands.
 
 A modern agent's day looks like this. A customer support agent calls Slack to message a user, Stripe to issue a refund, your database to update a record, Gmail to send a follow-up, and an LLM to generate the message. Five providers, five API keys, five blast radii — all living in the same `.env` file the agent reads on startup.
 
-When something goes wrong at 3am, the operator has three bad options:
+When something goes wrong at 3am, the Owner has three bad options:
 
 1. SSH into the box and `kill -9` the process (assuming SSH still works)
 2. Rotate every API key in every provider dashboard (assuming you can reach a laptop)
@@ -32,12 +32,12 @@ AgentRoot puts a proxy between your agent and every API it calls. The agent neve
 The agent's entire integration is three environment variables:
 
 ```bash
-AGENTROOT_AGENT_ID=eas:0x8a1f...c3d7
-AGENTROOT_TOKEN=eyJhbGci...           # auto-rotating, 24h
+AGENTROOT_AGENT_ID=0x8a1f...c3d7
+AGENTROOT_TOKEN=art_live_xxxxxxxxxxxx  # long-lived — revoke to kill
 AGENTROOT_PROXY=https://proxy.agentroot.app
 ```
 
-No API keys. No private keys. No secrets that matter if the agent is compromised beyond the token's 24-hour TTL.
+No API keys. No private keys. The only secret is the agent's bearer token — and you can roll or revoke it instantly, enforced on every request.
 
 ## Why this isn't just a smarter cost tracker
 
@@ -47,7 +47,7 @@ See [Action Classes](action-classes) for the full taxonomy.
 
 ## Why onchain matters
 
-AgentRoot anchors every agent's identity to the [**Ethereum Attestation Service (EAS)**](https://attest.org/) — a public smart contract on Base (Coinbase's Ethereum L2) where the agent's public key and operator wallet are recorded as a signed, tamper-proof attestation. Revoking that attestation is a single onchain transaction signed from your wallet, and the proxy checks revocation status on every request.
+AgentRoot anchors every agent's identity to the [**Ethereum Attestation Service (EAS)**](https://attest.org/) — a public smart contract on Base (Coinbase's Ethereum L2) where the agent's public key and Owner wallet are recorded as a signed, tamper-proof attestation. Revoking that attestation is a single onchain transaction signed from your wallet, and the proxy checks revocation status on every request.
 
 That changes the math on the kill switch. A centralized kill switch — an HTTP call to revoke access — has a race condition. A capable agent can intercept the call, revoke the revoker, or spin up a replacement before shutdown completes. An onchain EAS revocation is different. The agent can't front-run a wallet signature it doesn't hold. It can't modify the EAS contract. It can't economically censor a transaction across Ethereum's validator set. The kill switch lives in a computational domain the agent literally cannot reach.
 
@@ -67,7 +67,7 @@ The docs follow a deliberate path. Read in order if you're new:
 6. **[API Reference](api-reference)** — the raw HTTP contract: two headers, the proxy URL, your upstream path
 7. **[Trust Center](trust-center)** — security posture, subprocessors, and our compliance roadmap
 
-If you're a developer who wants code first, jump straight to [Quickstart](quickstart). If you're an operator deciding whether AgentRoot fits your security posture, read [Action Classes](action-classes), [Lifecycle](lifecycle), and the [Trust Center](trust-center) in that order.
+If you're a developer who wants code first, jump straight to [Quickstart](quickstart). If you're an Owner deciding whether AgentRoot fits your security posture, read [Action Classes](action-classes), [Lifecycle](lifecycle), and the [Trust Center](trust-center) in that order.
 
 ## What AgentRoot is not
 

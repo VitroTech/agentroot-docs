@@ -5,7 +5,7 @@ description: "Four mechanisms to stop an agent — at the binding level, the age
 
 The [lifecycle](lifecycle) is the noun system — Mint, Disable, Kill, ReMint. The kill switch is the verb system — *how* each transition is enforced when you click the button. This page covers the four mechanisms, what they cost, what they cannot do, and what your agent sees when one fires.
 
-If you want scenarios — when to reach for which mechanism — read [Operator Playbooks](playbooks) first.
+If you want scenarios — when to reach for which mechanism — read [Owner Playbooks](playbooks) first.
 
 ## The four mechanisms
 
@@ -64,7 +64,7 @@ This is the most-used kill in practice. It's the "cut the strings" tug — you s
 
 **Where to configure:** Dashboard → Agent → Auto-Kill Thresholds. Per-class quotas (Spend, Communication, Writes, Transactions, Provisioning, Destruction) are also set here — see [Action Classes](action-classes) for what each governs.
 
-**Common thresholds operators set:**
+**Common thresholds Owners set:**
 - Spend per day / per month
 - Request rate (requests per minute)
 - Error rate (% of failed calls in a rolling window)
@@ -90,7 +90,7 @@ Each kill mechanism returns a structured error. The HTTP status is the first sig
 {
   "error": {
     "code": "AGENT_KILLED",
-    "message": "Agent has been paused by operator",
+    "message": "Agent has been paused by Owner",
     "tier": 2
   }
 }
@@ -176,7 +176,7 @@ flowchart TD
 
 The default move is **Tier 2** — pause first, investigate second. Tier 1 is for known-good single-provider problems. Tier 3 is for the rare cases where you need a permanent, publicly verifiable record that the agent's identity was retired. Auto-kill should be configured on every agent as a backstop regardless of which manual tier you favor.
 
-For the operator-facing version of this — when to use each in real scenarios — see [Operator Playbooks](playbooks).
+For the Owner-facing version of this — when to use each in real scenarios — see [Owner Playbooks](playbooks).
 
 ## What kills do *not* do
 
@@ -193,6 +193,6 @@ Important boundaries on what a kill can — and cannot — affect.
 ## Related
 
 - **[Lifecycle](lifecycle)** — Mint, Disable, Kill, ReMint as first-class concepts
-- **[Operator Playbooks](playbooks)** — when to reach for which kill, in real scenarios
+- **[Owner Playbooks](playbooks)** — when to reach for which kill, in real scenarios
 - **[Action Classes](action-classes)** — per-class auto-kill thresholds
 - **[Architecture](architecture)** — how kill state propagates through the proxy

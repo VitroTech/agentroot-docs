@@ -23,7 +23,7 @@ AgentRoot's components operate at distinct trust levels:
 
 ## Zero-Knowledge Key Ingestion
 
-When an operator adds an API key, the key is entered in a **secure, isolated component on a separate origin** from the dashboard. The key is encrypted immediately and stored in the vault. No plaintext key data ever crosses back to the dashboard.
+When an Owner adds an API key, the key is entered in a **secure, isolated component on a separate origin** from the dashboard. The key is encrypted immediately and stored in the vault. No plaintext key data ever crosses back to the dashboard.
 
 The dashboard application **never has access** to the raw API key. Even if the dashboard is compromised (XSS, supply chain attack, malicious extension), the attacker cannot extract API keys. The key ingestion component has the minimum permissions needed: encrypt and store. It cannot decrypt existing keys, read other agents' data, or modify vault configuration.
 
@@ -44,21 +44,21 @@ Session tokens (`art_live_xxxxxxxxxxxx`) are the agent's runtime credential:
 
 | Property | Value |
 |----------|-------|
-| **TTL** | 24 hours (configurable) |
-| **Rotation** | Refresh from the dashboard or dashboard API before expiry |
+| **Lifetime** | Long-lived — no timed expiry, no rotation |
+| **Revocation** | Roll the token, or freeze/kill the agent — enforced on every request |
 | **Scope** | Bound to a single agent ID |
 | **Revocation** | Instant, from the dashboard |
 
 **If a token is compromised**, the damage is bounded:
 
-- The attacker can make API calls as the agent for up to 24 hours
+- The attacker can make API calls as the agent until you revoke it
 - The attacker **cannot** access other agents, API keys, or the dashboard
-- The attacker **cannot** extend the token's TTL or prevent rotation
+- The attacker **cannot** stop you from rolling the token or freezing the agent
 - Revoking the token from the dashboard kills it immediately (Tier 2)
 - Revoking the EAS attestation from your wallet kills the agent permanently, onchain, independent of AgentRoot (Tier 3)
 - The underlying P-256 identity is completely unaffected by token revocation
 
-The session token is not a private key, not a wallet seed, and not an API key. It's a short-lived access credential that can be burned and reissued without affecting the agent's identity.
+The session token is not a private key, not a wallet seed, and not an API key. It's a bearer access credential that can be rolled and reissued at any time without affecting the agent's identity.
 
 ## Fail-Closed Design
 
@@ -79,7 +79,7 @@ Downtime is always preferred over unauthorized access.
 
 **Exposure:** Session token and agent ID. No API keys, no private keys.
 
-**Mitigation:** The session token expires in 24 hours. Revoke it from the dashboard immediately (Tier 2), or revoke the agent's EAS attestation directly from your wallet (Tier 3) for a permanent, sovereign kill that works even if AgentRoot is offline. The token is scoped to proxy access only, and the proxy does not expose key material in responses.
+**Mitigation:** Cut access immediately — roll the token or freeze the agent from the dashboard (Tier 2), or revoke the agent's EAS attestation directly from your wallet (Tier 3) for a permanent, sovereign kill that works even if AgentRoot is offline. The exposure window is how fast you revoke — checked on every request — not a token lifetime. The token is scoped to proxy access only, and the proxy does not expose key material in responses.
 
 ### Dashboard Compromised (XSS, Supply Chain)
 
@@ -97,9 +97,9 @@ Downtime is always preferred over unauthorized access.
 
 **Mitigation:** Replace the key in the dashboard. Old keys are versioned for audit but no longer used. Only one provider is affected; other keys remain secure.
 
-### Operator Wallet Compromised
+### Owner Wallet Compromised
 
-**Threat:** An attacker gains access to the operator's Ethereum wallet.
+**Threat:** An attacker gains access to the Owner's Ethereum wallet.
 
 **Exposure:** The attacker could revoke attestations (Tier 3) or authenticate to the dashboard via SIWE.
 
@@ -111,7 +111,7 @@ Downtime is always preferred over unauthorized access.
 
 **Exposure:** The attacker could see the session token in the Authorization header.
 
-**Mitigation:** All proxy communication is over TLS (HTTPS). The session token has a 24-hour TTL, limiting the window of exploitation.
+**Mitigation:** All proxy communication is over TLS (HTTPS). A captured token is usable only until you roll it or freeze the agent — revocation is checked on every request.
 
 ## Onchain Security Properties
 
@@ -119,7 +119,7 @@ The EAS attestation on Base provides four properties that are independent of Age
 
 1. **Immutability** — the attestation cannot be modified after creation
 2. **Public verifiability** — anyone can query the attestation and verify the agent's identity
-3. **Sovereign revocation** — only the attester (operator wallet) can revoke. Not AgentRoot, not anyone else.
+3. **Sovereign revocation** — only the attester (Owner wallet) can revoke. Not AgentRoot, not anyone else.
 4. **Recoverable re-minting** — after a Tier 3 revocation, the agent's keypair and configuration remain in Vault. You can create a new attestation with the same agent data, bringing the agent back to life with a new onchain identity. The revoked attestation stays onchain as a permanent record. The new attestation proves the agent was restarted under your authority. Both are publicly verifiable.
 
 These properties survive even if AgentRoot's servers are all offline. The onchain identity remains verifiable and revocable from any Ethereum wallet interface.
@@ -128,7 +128,7 @@ These properties survive even if AgentRoot's servers are all offline. The onchai
 
 - [Architecture](architecture) — the component model
 - [Kill Switch](kill-switch) — the four tiers of revocation
-- [Dashboard Guide](dashboard) — managing security from the operator interface
+- [Dashboard Guide](dashboard) — managing security from the Owner interface
 
 ## Vendor and Subprocessor Details
 
