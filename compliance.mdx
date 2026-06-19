@@ -43,7 +43,7 @@ Two-plane isolation means the agent plane has zero access to the control plane. 
 **Risk:** Agents perform destructive actions — data deletion, unauthorized transactions, unintended external communications — due to misaligned goals or prompt injection.
 
 **How AgentRoot mitigates:**
-The proxy is the only path to upstream APIs. Owners control exactly which providers are connected per agent and can disable any connection instantly. Auto-kill triggers fire on anomalous usage patterns (request rate, volume, cost thresholds). Full audit logging means every action is traceable to a specific agent, session, and timestamp — providing the forensic trail needed for incident response.
+The proxy is the only path to upstream APIs. Owners control exactly which providers are connected per agent and can freeze any connection instantly. Auto-kill triggers fire on anomalous usage patterns (request rate, volume, cost thresholds). Full audit logging means every action is traceable to a specific agent, session, and timestamp — providing the forensic trail needed for incident response.
 
 **Relevant docs:** [Kill Switch](kill-switch) — Auto-Kill section. [Architecture](architecture) — How a Request Flows section.
 

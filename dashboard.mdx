@@ -42,7 +42,7 @@ The activity stream is the dashboard's center of gravity. Every proxied call app
 
 The values matter less than the existence — anything that can grow unbounded should have a ceiling.
 
-**Bulk operations across agents.** From the agents list, multi-select to disable several agents at once, rotate a key bound to multiple agents, or apply the same threshold pattern to a group. Bulk Disable is the right move when an upstream provider is having an incident — pause every agent that touches them in one click.
+**Bulk operations across agents.** From the agents list, multi-select to freeze several agents at once, rotate a key bound to multiple agents, or apply the same threshold pattern to a group. Bulk Freeze is the right move when an upstream provider is having an incident — pause every agent that touches them in one click.
 
 ## Triage: investigating a suspicious call
 
@@ -50,7 +50,7 @@ You see something in the stream you didn't expect. Walk it down.
 
 1. **Open the call.** Metadata only — request and response bodies are not stored — but everything else is there. Provider, path, method, status, latency, action class, timestamp.
 2. **Look at the calls before it.** Same agent, same time window. The trigger usually reveals itself in the immediately preceding traffic — a user message processed, a webhook fired, a scheduled job that ran.
-3. **Decide on scope.** One provider misbehaving for one agent → Disable the binding (Tier 1). Whole agent looks wrong → Disable the agent (Tier 2). Pattern repeats across agents → adjust thresholds globally.
+3. **Decide on scope.** One provider misbehaving for one agent → Freeze the binding (Tier 1). Whole agent looks wrong → Freeze the agent (Tier 2). Pattern repeats across agents → adjust thresholds globally.
 4. **Document and re-arm.** Add a note to the agent. Adjust thresholds if needed. Re-enable. The audit log keeps the record either way.
 
 Full version with context: [Playbooks → Investigating a suspicious call](playbooks#investigating-a-suspicious-call).
@@ -61,7 +61,7 @@ Pre-flight before you stop checking the dashboard. Five items.
 
 - **Auto-kill thresholds set on every agent** (see above)
 - **Notification routing tested** — send yourself a test alert, confirm it lands on the device you'll have with you
-- **Mobile dashboard works on your phone** — sign in, reach an agent's detail page, see the Disable button
+- **Mobile dashboard works on your phone** — sign in, reach an agent's detail page, see the Freeze button
 - **For SIWE users — your wallet is reachable** on a mobile signer
 - **No risky deploys after lunch on Friday**
 
@@ -75,11 +75,11 @@ The rest of the dashboard, organized by surface.
 
 ### Agents
 
-Each agent's detail page shows status (Active / Paused / Killed), the EAS attestation UID with a link to the onchain record, connected API keys with their bindings, the activity stream filtered to this agent, the session token TTL and last refresh, and the auto-kill threshold configuration. Buttons for Disable, Kill, and (on Killed agents) ReMint.
+Each agent's detail page shows status (Active / Paused / Killed), the EAS attestation UID with a link to the onchain record, connected API keys with their bindings, the activity stream filtered to this agent, the session token TTL and last refresh, and the auto-kill threshold configuration. Buttons for Freeze, Kill, and (on Killed agents) ReMint.
 
 ### Keys
 
-The keys list shows every API key in the vault, with the providers they're bound to, the agents that use those bindings, and the last-used timestamp. Per-key actions: Disable (instant Tier 1 across every agent), Replace (new key swapped into the same bindings), Delete (vault ciphertext purged). The label and provider are visible; the key value is never displayed after ingestion.
+The keys list shows every API key in the vault, with the providers they're bound to, the agents that use those bindings, and the last-used timestamp. Per-key actions: Freeze (instant Tier 1 across every agent), Replace (new key swapped into the same bindings), Delete (vault ciphertext purged). The label and provider are visible; the key value is never displayed after ingestion.
 
 ### Activity
 
@@ -104,6 +104,6 @@ Owner profile (wallet or social identity), API tokens for the dashboard's own re
 
 - **[Owner Playbooks](playbooks)** — incident response, rotation, deployment, the 3am phone call
 - **[Quickstart](quickstart)** — onboarding step-by-step for both sign-in methods
-- **[Lifecycle](lifecycle)** — Mint, Disable, Kill, ReMint as first-class concepts
+- **[Lifecycle](lifecycle)** — Mint, Freeze, Kill, ReMint as first-class concepts
 - **[Kill Switch](kill-switch)** — the four enforcement mechanisms in detail
 - **[Action Classes](action-classes)** — what each per-class threshold governs

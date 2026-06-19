@@ -1,6 +1,6 @@
 ---
 title: "Lifecycle"
-description: "Mint, Disable, Kill, ReMint — the states every agent and key moves through."
+description: "Mint, Freeze, Kill, ReMint — the states every agent and key moves through."
 ---
 
 Every agent in AgentRoot moves through four states. Every key moves through three. This page is the canonical reference for both — what each transition does, who can trigger it, what it costs, and what's reversible.
@@ -13,7 +13,7 @@ If you only learn one thing from these docs, learn the lifecycle vocabulary. It'
 stateDiagram-v2
     direction LR
     [*] --> Active : Mint
-    Active --> Paused : Disable<br/>(Tier 2)
+    Active --> Paused : Freeze<br/>(Tier 2)
     Paused --> Active : Activate
     Active --> Killed : Kill<br/>(Tier 3, onchain)
     Paused --> Killed : Kill<br/>(Tier 3, onchain)
@@ -33,11 +33,11 @@ stateDiagram-v2
 
 **Cost:** in managed mode, AgentRoot pays the gas. In sovereign (SIWE) mode, your wallet pays Base gas — typically less than a cent.
 
-**Reversible:** by Disable (pause) or Kill (revoke). The keypair persists in the vault until the agent is hard-deleted.
+**Reversible:** by Freeze (pause) or Kill (revoke). The keypair persists in the vault until the agent is hard-deleted.
 
 **The result:** an `Active` agent. The proxy will accept calls signed with this agent's session token.
 
-### Disable
+### Freeze
 
 **What it does:** pauses every API the agent reaches. The proxy returns `403 AGENT_KILLED` on every request. Bindings stay intact — the agent is still registered, the keys are still in the vault, the EAS attestation is still live.
 
@@ -52,6 +52,8 @@ stateDiagram-v2
 ### Kill
 
 **What it does:** revokes the EAS attestation onchain. The attestation's `revocationTime` is set to the current block timestamp. The proxy checks attestation status on every request and rejects revoked agents with `403 ATTESTATION_REVOKED`. The check is independent of the vault, the dashboard, and all AgentRoot infrastructure — even if AgentRoot is down, a revoked attestation stays revoked.
+
+**Two-phase when AgentRoot orchestrates it.** A Kill through AgentRoot (the dashboard or the 3AM button) fires an immediate **Freeze** first — the proxy denies the agent's very next call, sub-second, with no wait on the chain — then the onchain revocation, which confirms in the next few blocks as the permanent, anyone-can-verify receipt. In pure sovereign mode (your wallet revoking directly, AgentRoot out of the loop) there is no AR Freeze leg; the proxy enforces the revocation on the next call once it is visible onchain.
 
 **Who triggers it:** the Owner. In sovereign (SIWE) mode, directly from your wallet against the EAS contract on Base — no AgentRoot dashboard required, no AgentRoot API required, no AgentRoot servers required. In managed mode, from the dashboard, with AgentRoot's attester signing the revocation on your behalf.
 
@@ -89,17 +91,17 @@ API keys (the credentials your agent uses to talk to OpenAI, Stripe, Slack, etc.
 stateDiagram-v2
     direction LR
     [*] --> Active : Add key
-    Active --> Disabled : Disable
-    Disabled --> Active : Activate
+    Active --> Frozen : Freeze
+    Frozen --> Active : Activate
     Active --> [*] : Delete
-    Disabled --> [*] : Delete
+    Frozen --> [*] : Delete
 ```
 
 ### Activate
 
 The default state when a key is added. The proxy will inject this key into outbound requests when any bound agent calls this provider.
 
-### Disable
+### Freeze
 
 Flip a flag on the key. Every bound agent — possibly hundreds — gets `403 PROVIDER_DISABLED` on the next call until you re-Activate. **One click stops 100 agents.** The scale primitive: kill at the key level, not the agent level, when the failure mode is provider-shaped rather than agent-shaped.
 
@@ -116,15 +118,15 @@ Reversible only by re-adding the key (which becomes a new key with a new interna
 | Situation | Right move | Tier |
 |---|---|---|
 | One provider is misbehaving for one agent | Tier 1 — toggle the binding off | 1 |
-| One provider is misbehaving for everyone | Disable the key | n/a (key-level) |
-| Whole agent is misbehaving | Disable the agent | 2 |
+| One provider is misbehaving for everyone | Freeze the key | n/a (key-level) |
+| Whole agent is misbehaving | Freeze the agent | 2 |
 | Whole agent must never act again under this identity | Kill (revoke onchain) | 3 |
 | Killed agent needs to come back | ReMint | n/a |
-| Spend / rate threshold crossed | Auto-kill already disabled the agent; review and Activate | auto |
+| Spend / rate threshold crossed | Auto-kill already froze the agent; review and Activate | auto |
 
 ## Auto-guardrails interact with the lifecycle
 
-You can set per-agent or per-key thresholds: spend per day, request rate, error rate, action-class quota (e.g. "no more than 5 Destruction calls per hour"). When a threshold breaches, AgentRoot automatically Disables the offending entity — agent, key, or both — and surfaces an alert. You don't lose data. You don't lose state. You just wake up to a paused agent and a clear log entry instead of a burned-down house.
+You can set per-agent or per-key thresholds: spend per day, request rate, error rate, action-class quota (e.g. "no more than 5 Destruction calls per hour"). When a threshold breaches, AgentRoot automatically Freezes the offending entity — agent, key, or both — and surfaces an alert. You don't lose data. You don't lose state. You just wake up to a paused agent and a clear log entry instead of a burned-down house.
 
 See [Action Classes](action-classes) for per-class auto-kill triggers.
 
@@ -134,16 +136,16 @@ The vault keypair. Every API key bound to the agent. The agent's name, descripti
 
 What does *not* survive: the `agent_id` (changes after ReMint, but the lineage chain links them) and the EAS attestation UID (the old one is revoked forever; the new one is freshly minted).
 
-## What survives a Disable
+## What survives a Freeze
 
-Everything. Disable is a flag, not a state migration.
+Everything. Freeze is a flag, not a state migration.
 
 ## How the lifecycle interacts with the kill switch
 
 The four kill-switch tiers in [Kill Switch](kill-switch) are mostly lifecycle transitions in disguise:
 
-- **Tier 1 (per-API toggle)** is a key-level Disable scoped to one binding
-- **Tier 2 (pause agent)** is an agent-level Disable
+- **Tier 1 (per-API toggle)** is a key-level Freeze scoped to one binding
+- **Tier 2 (pause agent)** is an agent-level Freeze
 - **Tier 3 (onchain revoke)** is an agent-level Kill
 - **Auto-kill** is an automated Tier 1 or Tier 2 triggered by threshold breach
 
