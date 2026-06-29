@@ -13,7 +13,7 @@ If you want scenarios — when to reach for which mechanism — read [Owner Play
 |---|---|---|---|---|---|
 | **Tier 1** | Freeze (key) | One binding | Instant | Yes | Dashboard |
 | **Tier 2** | Freeze (agent) | Whole agent | Instant | Yes | Dashboard |
-| **Tier 3** | Kill | Onchain | instant freeze + next few blocks | No (recoverable via ReMint) | Wallet |
+| **Tier 3** | Kill | Onchain | next few blocks (managed adds an instant freeze leg) | No (recoverable via ReMint) | Wallet |
 | **Auto-kill** | Freeze (auto) | Threshold-based | Instant | Yes (reset) | Pre-configured |
 
 Tier 1, Tier 2, and Auto-kill are all forms of Freeze — they flip a flag the proxy checks on every request. Tier 3 is the only mechanism that touches onchain state; it is the sovereign kill, and it works without AgentRoot's infrastructure.
